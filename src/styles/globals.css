@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  @apply bg-white text-slate-800 antialiased;
+}
+
+a {
+  @apply text-inherit no-underline transition-colors duration-200;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-md bg-tangerine px-5 py-3 font-semibold text-white shadow-lg shadow-orange-500/20 transition-transform duration-200 hover:-translate-y-0.5 hover:bg-amber;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center rounded-md border border-navy/20 bg-white px-5 py-3 font-semibold text-navy transition-transform duration-200 hover:-translate-y-0.5 hover:border-navy/40;
+}
+
+.section-title {
+  @apply text-3xl font-semibold text-navy sm:text-4xl;
+}
+
+.section-subtitle {
+  @apply mt-4 max-w-2xl text-base text-slate-600 sm:text-lg;
+}
+
+.section-padding {
+  @apply py-16 sm:py-20;
+}
+
+.content-grid {
+  @apply grid gap-8 sm:grid-cols-2 lg:grid-cols-3;
+}
+
+.card {
+  @apply rounded-xl bg-white p-6 shadow-card transition-transform duration-200 hover:-translate-y-1 hover:shadow-xl;
+}
+
+.stat-card {
+  @apply flex flex-col items-center justify-center gap-2 rounded-xl bg-white p-8 text-center shadow-card;
+}
+
+.badge {
+  @apply inline-flex items-center rounded-full bg-amber/10 px-4 py-1 text-sm font-semibold uppercase tracking-wide text-amber;
+}
+
+.gradient-hero {
+  @apply relative overflow-hidden bg-gradient-to-r from-ocean via-navy to-slate-850 text-white;
+}
+
+.section-muted {
+  @apply bg-slate-50;
+}
