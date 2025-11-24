@@ -3,7 +3,7 @@ export type AdminUser = {
 };
 
 const ADMIN_USER = "admin";
-const ADMIN_PASS = "kealee@2025"; // change later to env
+const ADMIN_PASS = "admin123"; // change later to env
 const ADMIN_SESSION_KEY = "kealee_admin_session";
 
 export function login(username: string, password: string): boolean {

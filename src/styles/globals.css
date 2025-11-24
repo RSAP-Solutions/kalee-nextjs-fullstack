@@ -5,6 +5,13 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --max-content-width: 1200px;
+  --radius-card: 1.25rem;
+  --radius-modal: 1.75rem;
+  --space-section: clamp(3rem, 5vw, 6rem);
+  --space-stack: clamp(2rem, 3vw, 3.5rem);
+  --fluid-title: clamp(2.25rem, 3vw, 3.5rem);
+  --fluid-subtitle: clamp(1.05rem, 1.4vw, 1.3rem);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -14,8 +21,17 @@
   }
 }
 
+* {
+  @apply scroll-smooth;
+}
+
 body {
   @apply bg-white text-slate-800 antialiased;
+  min-height: 100vh;
+}
+
+main {
+  min-height: 60vh;
 }
 
 a {
@@ -31,7 +47,8 @@ a {
 }
 
 .section-title {
-  @apply text-3xl font-semibold text-navy sm:text-4xl;
+  font-size: var(--fluid-title);
+  @apply font-semibold text-navy leading-tight;
 }
 
 .section-subtitle {
@@ -47,11 +64,11 @@ a {
 }
 
 .card {
-  @apply rounded-xl bg-white p-6 shadow-card transition-transform duration-200 hover:-translate-y-1 hover:shadow-xl;
+  @apply rounded-[var(--radius-card)] bg-white p-6 shadow-card transition-transform duration-200 hover:-translate-y-1 hover:shadow-xl;
 }
 
 .stat-card {
-  @apply flex flex-col items-center justify-center gap-2 rounded-xl bg-white p-8 text-center shadow-card;
+  @apply flex flex-col items-center justify-center gap-2 rounded-[var(--radius-card)] bg-white p-8 text-center shadow-card;
 }
 
 .badge {
@@ -64,4 +81,37 @@ a {
 
 .section-muted {
   @apply bg-slate-50;
+}
+
+.page-shell {
+  @apply mx-auto w-full px-4 sm:px-6 lg:px-8;
+  max-width: min(var(--max-content-width), calc(100vw - 2rem));
+}
+
+.stack {
+  @apply flex flex-col gap-6;
+}
+
+.stack-lg {
+  @apply flex flex-col;
+  gap: var(--space-stack);
+}
+
+.section-block {
+  padding-block: var(--space-section);
+}
+
+.section-grid-responsive {
+  @apply grid gap-6;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.prose-responsive {
+  font-size: var(--fluid-subtitle);
+  @apply leading-relaxed text-slate-600;
+}
+
+.safe-area-inset {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }

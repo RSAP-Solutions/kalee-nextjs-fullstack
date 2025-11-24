@@ -31,12 +31,12 @@ export default function Layout({
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <div className={`${inter.className} flex min-h-screen flex-col bg-white`}>
+      <div
+        className={`${inter.className} safe-area-inset flex min-h-screen flex-col bg-white text-slate-800`}
+      >
         <Header />
         <main className="flex-1 bg-white">
-          <div className="mx-auto w-full max-w-content px-4 sm:px-6 lg:px-8">
-            {children}
-          </div>
+          <div className="page-shell py-8 sm:py-10 lg:py-12">{children}</div>
         </main>
         <Footer />
       </div>

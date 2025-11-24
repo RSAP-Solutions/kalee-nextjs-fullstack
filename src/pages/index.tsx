@@ -204,212 +204,192 @@ const formspreeEndpoint = "https://formspree.io/f/YOUR_FORM_ID";
 
 const Home: NextPageWithMeta = () => {
   return (
-    <div className="space-y-24 py-12 sm:py-16">
-      <section className="relative -mx-4 -mt-8 overflow-hidden rounded-3xl bg-gradient-to-r from-ocean via-navy to-slate-850 px-4 py-20 text-white sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="mx-auto flex w-full max-w-content flex-col gap-10">
-          <div className="space-y-6 text-center lg:text-left">
-            <span className="badge bg-white/10 text-sm font-semibold uppercase tracking-wide text-amber">
+    <div className="stack-lg py-10">
+      <section className="gradient-hero relative -mx-4 -mt-8 rounded-3xl px-4 py-16 text-white sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="page-shell grid gap-10 lg:grid-cols-[1.1fr,0.9fr]">
+          <div className="stack">
+            <span className="badge bg-white/10 text-amber">
               Licensed General Contractor • DMV Region
             </span>
-            <h1 className="text-3xl font-bold leading-tight sm:text-5xl">
-              Professional Construction Services & Home Renovations
-            </h1>
-            <p className="text-xl font-semibold text-amber">
-              Speed Meets Precision
-            </p>
-            <p className="mx-auto max-w-3xl text-lg text-white/85 lg:mx-0">
-              Kealee Construction delivers quality additions, renovations, and
-              custom builds across Washington DC, Prince George County,
-              Montgomery County, Southern Maryland, Northern Virginia, and
-              Baltimore. 24/7 emergency response backed by licensed experts.
-            </p>
+            <div className="stack">
+              <h1 className="section-title text-white">
+                Professional Construction Services & Home Renovations
+              </h1>
+              <p className="text-lg font-semibold text-amber">Speed Meets Precision</p>
+              <p className="prose-responsive text-white/85">
+                Kealee Construction delivers quality additions, renovations, and custom builds across
+                Washington DC, Prince George County, Montgomery County, Southern Maryland, Northern
+                Virginia, and Baltimore. 24/7 emergency response backed by licensed experts.
+              </p>
+            </div>
             <div className="flex flex-wrap items-center justify-center gap-4 lg:justify-start">
               <Link href="/consultation-services" className="btn-primary">
                 Book Consultation
               </Link>
-              <a href="tel:4438529890" className="btn-secondary border-white/40">
+              <a href="tel:4438529890" className="btn-secondary border-white/40 text-white">
                 Call (443) 852-9890
               </a>
             </div>
           </div>
-          <div className="grid gap-6 text-center sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              {
-                value: "10+ Years",
-                label: "Regional Experience",
-              },
-              {
-                value: "24/7",
-                label: "Emergency Service",
-              },
-              {
-                value: "100%",
-                label: "Consultation Credit",
-              },
-              {
-                value: "Licensed & Insured",
-                label: "Peace of Mind",
-              },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-2xl bg-white/10 p-6 backdrop-blur"
-              >
-                <p className="text-2xl font-bold text-amber">{stat.value}</p>
-                <p className="mt-2 text-sm text-white/80">{stat.label}</p>
+          <div className="grid gap-4 rounded-[var(--radius-card)] bg-white/8 p-6 shadow-2xl backdrop-blur">
+            <div className="grid gap-3 text-sm text-white/80 sm:grid-cols-2">
+              {[
+                { value: "10+ Years", label: "Regional Experience" },
+                { value: "24/7", label: "Emergency Service" },
+                { value: "100%", label: "Consultation Credit" },
+                { value: "Licensed & Insured", label: "Peace of Mind" },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-2xl border border-white/15 p-4">
+                  <p className="text-2xl font-bold text-amber">{stat.value}</p>
+                  <p className="mt-1 text-xs uppercase tracking-wide text-white/70">
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-2xl border border-white/15 p-4 text-sm text-white/85">
+              Serving homeowners throughout the DMV with transparent budgets, design-assist delivery,
+              and concierge-level client service.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="services" className="section-block">
+        <div className="page-shell stack-lg">
+          <div className="text-center">
+            <h2 className="section-title">Expert Construction & Remodeling Services</h2>
+            <p className="section-subtitle mx-auto">
+              Full-service residential construction tailored to Washington DC, Maryland, and Virginia
+              homeowners. Explore the solutions that fit your project goals.
+            </p>
+          </div>
+          <div className="section-grid-responsive">
+            {services.map((service) => (
+              <div key={service.title} className="card border border-slate-100">
+                <h3 className="text-lg font-semibold text-tangerine">{service.title}</h3>
+                <p className="mt-3 text-sm text-slate-600">{service.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="services" className="space-y-12">
-        <div className="text-center">
-          <h2 className="section-title">
-            Expert Construction & Remodeling Services
-          </h2>
-          <p className="section-subtitle mx-auto">
-            Full-service residential construction tailored to Washington DC,
-            Maryland, and Virginia homeowners. Explore the solutions that fit
-            your project goals.
-          </p>
-        </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {services.map((service) => (
-            <div key={service.title} className="card border-t-4 border-ocean">
-              <h3 className="text-xl font-semibold text-tangerine">
-                {service.title}
-              </h3>
-              <p className="mt-4 text-slate-600">{service.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="booking" className="section-muted space-y-12 rounded-3xl p-10 sm:p-12">
-        <div className="text-center">
-          <h2 className="section-title">Choose Your Consultation Package</h2>
-          <p className="section-subtitle mx-auto">
-            Every paid consultation is credited in full toward your construction
-            contract. Select the path that fits your planning needs.
-          </p>
-        </div>
-        <div className="grid gap-8 lg:grid-cols-3">
-          {consultationTiers.map((tier) => (
-            <div
-              key={tier.tier}
-              className={`relative flex h-full flex-col rounded-3xl bg-white p-8 shadow-card transition-transform duration-200 hover:-translate-y-1 ${tier.highlighted ? "border-t-8 border-amber ring-2 ring-amber/30" : "border-t-8 border-ocean/70"}`}
-            >
-              {tier.highlighted && (
-                <span className="absolute -top-4 right-6 rounded-full bg-amber px-4 py-1 text-xs font-semibold uppercase text-navy">
-                  Most Popular
-                </span>
-              )}
-              <div className="text-5xl font-bold text-ocean">{tier.tier}</div>
-              <h3 className="mt-4 text-2xl font-semibold text-navy">
-                {tier.name}
-              </h3>
-              <p
-                className={`mt-2 text-xl font-bold ${tier.price.toLowerCase().includes("free") ? "text-emerald-500" : "text-tangerine"}`}
-              >
-                {tier.price}
-              </p>
-              <p className="mt-4 text-slate-600">{tier.description}</p>
-              {tier.credit && (
-                <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-                  {tier.credit}
-                </div>
-              )}
-              <ul className="mt-6 flex flex-1 flex-col gap-3 text-sm text-slate-600">
-                {tier.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3">
-                    <span className="mt-1 text-emerald-500">✓</span>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/consultation-services"
-                className={`mt-8 inline-flex items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${tier.highlighted ? "bg-amber text-navy hover:bg-amber/90" : "bg-tangerine text-white hover:bg-amber"}`}
-              >
-                Reserve This Consultation
-              </Link>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-12">
-        <div className="text-center">
-          <h2 className="section-title">Why Homeowners Choose Kealee</h2>
-          <p className="section-subtitle mx-auto">
-            Local expertise, proven systems, and a dedication to craftsmanship
-            make every project a confident investment.
-          </p>
-        </div>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {differentiators.map((item) => (
-            <div key={item.title} className="card text-center">
-              <div className="text-4xl">{item.icon}</div>
-              <h3 className="mt-4 text-lg font-semibold text-navy">
-                {item.title}
-              </h3>
-              <p className="mt-3 text-sm text-slate-600">{item.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="about" className="section-muted space-y-12 rounded-3xl p-10 sm:p-12">
-        <div className="text-center">
-          <h2 className="section-title">Specialized Construction Expertise</h2>
-          <p className="section-subtitle mx-auto">
-            From ground-up new builds to adaptive reuse, our teams deliver
-            comprehensive solutions for every style of renovation.
-          </p>
-        </div>
-        <div className="grid gap-10 md:grid-cols-2">
-          {specializationCategories.map((category) => (
-            <div key={category.title} className="rounded-2xl bg-white p-8 shadow-card">
-              <h3 className="text-xl font-semibold text-navy">
-                {category.title}
-              </h3>
-              <div className="mt-4 grid gap-3">
-                {category.keywords.map((keyword) => (
-                  <div
-                    key={keyword}
-                    className="rounded-lg border-l-4 border-tangerine bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-transform hover:translate-x-1"
-                  >
-                    {keyword}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section
-        id="contact"
-        className="relative -mx-4 rounded-3xl bg-gradient-to-r from-ocean via-navy to-slate-850 px-4 py-16 text-white sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
-      >
-        <div className="mx-auto flex w-full max-w-content flex-col gap-12">
-          <div className="space-y-4 text-center lg:text-left">
-            <h2 className="text-3xl font-semibold sm:text-4xl">
-              Ready to Start Your Renovation?
-            </h2>
-            <p className="text-lg text-white/80">
-              Request a consultation and receive a tailored project roadmap.
-              Serving Washington DC, Maryland, and Northern Virginia with rapid
-              response and transparent estimates.
+      <section id="booking" className="section-muted section-block">
+        <div className="page-shell stack-lg">
+          <div className="text-center">
+            <h2 className="section-title">Choose Your Consultation Package</h2>
+            <p className="section-subtitle mx-auto">
+              Every paid consultation is credited in full toward your construction contract. Select the
+              path that fits your planning needs.
             </p>
           </div>
-          <div className="mx-auto w-full max-w-3xl rounded-3xl bg-white p-8 shadow-2xl">
-            <form
-              action={formspreeEndpoint}
-              method="POST"
-              className="grid gap-6"
-            >
+          <div className="section-grid-responsive">
+            {consultationTiers.map((tier) => (
+              <div
+                key={tier.tier}
+                className={`relative flex h-full flex-col rounded-[var(--radius-card)] bg-white p-8 shadow-card transition-transform duration-200 hover:-translate-y-1 ${tier.highlighted ? "border-2 border-amber ring-2 ring-amber/30" : "border border-slate-100"}`}
+              >
+                {tier.highlighted && (
+                  <span className="absolute -top-4 right-6 rounded-full bg-amber px-4 py-1 text-xs font-semibold uppercase text-navy">
+                    Most Popular
+                  </span>
+                )}
+                <div className="text-4xl font-bold text-ocean">{tier.tier}</div>
+                <h3 className="mt-4 text-2xl font-semibold text-navy">{tier.name}</h3>
+                <p className={`mt-2 text-xl font-bold ${tier.price.toLowerCase().includes("free") ? "text-emerald-500" : "text-tangerine"}`}>
+                  {tier.price}
+                </p>
+                <p className="mt-4 text-sm text-slate-600">{tier.description}</p>
+                {tier.credit && (
+                  <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                    {tier.credit}
+                  </div>
+                )}
+                <ul className="mt-6 flex flex-1 flex-col gap-3 text-sm text-slate-600">
+                  {tier.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-3">
+                      <span className="mt-1 text-emerald-500">✓</span>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/consultation-services"
+                  className={`mt-8 inline-flex items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${tier.highlighted ? "bg-amber text-navy hover:bg-amber/90" : "bg-tangerine text-white hover:bg-amber"}`}
+                >
+                  Reserve This Consultation
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section-block">
+        <div className="page-shell stack-lg">
+          <div className="text-center">
+            <h2 className="section-title">Why Homeowners Choose Kealee</h2>
+            <p className="section-subtitle mx-auto">
+              Local expertise, proven systems, and a dedication to craftsmanship make every project a
+              confident investment.
+            </p>
+          </div>
+          <div className="section-grid-responsive">
+            {differentiators.map((item) => (
+              <div key={item.title} className="card text-center">
+                <div className="text-4xl">{item.icon}</div>
+                <h3 className="mt-4 text-lg font-semibold text-navy">{item.title}</h3>
+                <p className="mt-3 text-sm text-slate-600">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="about" className="section-muted section-block">
+        <div className="page-shell stack-lg">
+          <div className="text-center">
+            <h2 className="section-title">Specialized Construction Expertise</h2>
+            <p className="section-subtitle mx-auto">
+              From ground-up new builds to adaptive reuse, our teams deliver comprehensive solutions for every
+              style of renovation.
+            </p>
+          </div>
+          <div className="grid gap-8 md:grid-cols-2">
+            {specializationCategories.map((category) => (
+              <div key={category.title} className="rounded-[var(--radius-card)] bg-white p-8 shadow-card">
+                <h3 className="text-xl font-semibold text-navy">{category.title}</h3>
+                <div className="mt-4 grid gap-3">
+                  {category.keywords.map((keyword) => (
+                    <div
+                      key={keyword}
+                      className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-transform hover:translate-x-1"
+                    >
+                      {keyword}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="contact" className="gradient-hero relative -mx-4 rounded-3xl px-4 py-16 text-white sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="page-shell grid gap-10 lg:grid-cols-[1fr,1.1fr]">
+          <div className="stack">
+            <h2 className="section-title text-white">Ready to Start Your Renovation?</h2>
+            <p className="prose-responsive text-white/80">
+              Request a consultation and receive a tailored project roadmap. Serving Washington DC, Maryland,
+              and Northern Virginia with rapid response and transparent estimates.
+            </p>
+            <div className="rounded-2xl border border-white/15 p-5 text-sm text-white/85">
+              <p>24/7 Emergency Hotline · Licensed & Insured · Concierge-level project updates.</p>
+            </div>
+          </div>
+          <div className="rounded-[var(--radius-modal)] bg-white p-8 shadow-2xl">
+            <form action={formspreeEndpoint} method="POST" className="grid gap-6">
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <label
