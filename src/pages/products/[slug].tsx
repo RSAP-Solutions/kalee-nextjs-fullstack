@@ -1,9 +1,9 @@
-import { GetStaticPaths, GetStaticProps } from "next";
 import { getProductRepository } from "@/server/db/client";
 import type { Product } from "@/server/db/entities/Product";
 import Image from "next/image";
 import Link from "next/link";
 import type { NextPageWithMeta } from "@/pages/_app";
+import { GetServerSideProps } from "next";
 
 type ProductPageProps = {
   product: Product | null;
@@ -174,29 +174,7 @@ const ProductPage: NextPageWithMeta<ProductPageProps> = ({ product }) => {
   );
 };
 
-export const getStaticPaths: GetStaticPaths = async () => {
-  try {
-    const repo = await getProductRepository();
-    const products = await repo.find({ select: { slug: true } });
-    
-    const paths = products.map((product) => ({
-      params: { slug: product.slug },
-    }));
-
-    return {
-      paths,
-      fallback: true,
-    };
-  } catch (error) {
-    console.error("Error getting product paths:", error);
-    return {
-      paths: [],
-      fallback: true,
-    };
-  }
-};
-
-export const getStaticProps: GetStaticProps<ProductPageProps> = async ({ params }) => {
+export const getServerSideProps: GetServerSideProps<ProductPageProps> = async ({ params }) => {
   if (!params || typeof params.slug !== "string") {
     return { notFound: true };
   }
@@ -216,7 +194,6 @@ export const getStaticProps: GetStaticProps<ProductPageProps> = async ({ params 
       props: {
         product: JSON.parse(JSON.stringify(product)),
       },
-      revalidate: 60,
     };
   } catch (error) {
     console.error("Error fetching product:", error);
