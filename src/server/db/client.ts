@@ -26,6 +26,16 @@ const sslConfig = () => {
 };
 
 export const getDataSource = async () => {
+  // Debug: Log all environment variables (mask sensitive data)
+  console.log("[getDataSource] Environment check:");
+  console.log("- DATABASE_HOST:", process.env.DATABASE_HOST ? "SET" : "MISSING");
+  console.log("- DATABASE_USER:", process.env.DATABASE_USER ? "SET" : "MISSING");
+  console.log("- DATABASE_PASSWORD:", process.env.DATABASE_PASSWORD ? "SET" : "MISSING");
+  console.log("- DATABASE_NAME:", process.env.DATABASE_NAME ? "SET" : "MISSING");
+  console.log("- DATABASE_PORT:", process.env.DATABASE_PORT || "5432 (default)");
+  console.log("- DATABASE_SSL:", process.env.DATABASE_SSL || "false (default)");
+  console.log("- NODE_ENV:", process.env.NODE_ENV || "development (default)");
+  
   // Validate env vars before trying to connect (lazy validation)
   const required = ["DATABASE_HOST", "DATABASE_USER", "DATABASE_PASSWORD", "DATABASE_NAME"];
   const missing = required.filter((key) => !process.env[key]);
@@ -49,8 +59,8 @@ export const getDataSource = async () => {
 
   // Create DataSource lazily with current env vars
   if (!appDataSource) {
-    appDataSource = new DataSource({
-      type: "postgres",
+    const config = {
+      type: "postgres" as const,
       host: process.env.DATABASE_HOST!,
       port: parseNumber(process.env.DATABASE_PORT, 5432),
       username: process.env.DATABASE_USER!,
@@ -62,12 +72,21 @@ export const getDataSource = async () => {
       synchronize: false,
       logging: process.env.NODE_ENV !== "production",
       ssl: sslConfig(),
+    };
+    
+    console.log("[getDataSource] Creating DataSource with config:", {
+      ...config,
+      password: config.password ? "***MASKED***" : "MISSING",
     });
+    
+    appDataSource = new DataSource(config);
   }
 
   if (!appDataSource.isInitialized) {
     try {
+      console.log("[getDataSource] Attempting to initialize database connection...");
       await appDataSource.initialize();
+      console.log("[getDataSource] Database connection established successfully!");
     } catch (error: unknown) {
       console.error("[getDataSource] Initialization error:", error);
       const errorCode = (error as { code?: string })?.code;
