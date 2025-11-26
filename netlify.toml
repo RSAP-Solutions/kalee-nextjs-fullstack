@@ -8,3 +8,4 @@
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "9"
+  NPM_FLAGS = "--include=dev"
