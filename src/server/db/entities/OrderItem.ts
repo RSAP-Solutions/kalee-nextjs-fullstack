@@ -36,12 +36,6 @@ export class OrderItem {
   @Column({ name: "product_title", type: "varchar", length: 160, nullable: false })
   productName!: string;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
-  productSlug?: string;
-
-  @Column({ type: "varchar", length: 500, nullable: true })
-  productImage?: string;
-
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
 
