@@ -27,20 +27,14 @@ export class OrderItem {
   @Column({ type: "int", nullable: false })
   quantity!: number;
 
-  @Column({ type: "decimal", precision: 10, scale: 2, nullable: false })
+  @Column({ name: "unit_price", type: "decimal", precision: 10, scale: 2, nullable: false })
   price!: string;
 
-  @Column({ 
-    type: "decimal", 
-    precision: 5, 
-    scale: 2, 
-    nullable: true,
-    default: 0.00
-  })
-  discount?: string;
+  @Column({ name: "total_price", type: "decimal", precision: 10, scale: 2, nullable: false })
+  totalPrice!: string;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
-  productName?: string;
+  @Column({ name: "product_title", type: "varchar", length: 160, nullable: false })
+  productName!: string;
 
   @Column({ type: "varchar", length: 255, nullable: true })
   productSlug?: string;
@@ -60,22 +54,18 @@ export class OrderItem {
   }
 
   get discountAmount(): number {
-    return parseFloat(this.discount || "0");
+    return 0; // No discount column in database
   }
 
   get finalUnitPrice(): number {
-    return this.unitPrice - this.discountAmount;
-  }
-
-  get totalPrice(): number {
-    return this.finalUnitPrice * this.quantity;
+    return this.unitPrice;
   }
 
   get totalDiscount(): number {
-    return this.discountAmount * this.quantity;
+    return 0;
   }
 
   get finalTotal(): number {
-    return this.totalPrice;
+    return parseFloat(this.totalPrice);
   }
 }
