@@ -2,7 +2,6 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -13,8 +12,6 @@ import { Order } from "./Order";
 import { Product } from "./Product";
 
 @Entity({ name: "order_items" })
-@Index("IDX_ORDER_ITEMS_ORDER_ID", ["order_id"])
-@Index("IDX_ORDER_ITEMS_PRODUCT_ID", ["product_id"])
 export class OrderItem {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
