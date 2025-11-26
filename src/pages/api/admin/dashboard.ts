@@ -89,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       id: order.id,
       customerName: order.shippingFullName,
       status: order.status,
-      totalAmount: Number(order.totalAmount ?? 0),
+      totalAmount: parseFloat(order.totalAmount?.toString() ?? "0"),
       updatedAt: order.updatedAt?.toISOString?.() ?? new Date().toISOString(),
       headlineItem: order.orderItems?.[0]?.productName ?? "Pending assignment",
     }));
@@ -97,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const recentTransactionsData = recentTransactions.map((order) => ({
       id: order.id,
       customerName: order.shippingFullName,
-      totalAmount: Number(order.totalAmount ?? 0),
+      totalAmount: parseFloat(order.totalAmount?.toString() ?? "0"),
       date: order.createdAt?.toISOString?.() ?? new Date().toISOString(),
       method: order.shippingMethod ?? null,
     }));

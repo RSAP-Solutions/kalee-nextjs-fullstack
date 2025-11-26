@@ -25,10 +25,10 @@ export class Order {
   status!: OrderStatus;
 
   @Column({ name: "total_amount", type: "numeric", precision: 10, scale: 2, default: 0 })
-  totalAmount!: number;
+  totalAmount!: string;
 
   @Column({ name: "shipping_cost", type: "numeric", precision: 10, scale: 2, default: 0 })
-  shippingCost!: number;
+  shippingCost!: string;
 
   @Column({ name: "shipping_full_name", type: "varchar", length: 160 })
   shippingFullName!: string;
