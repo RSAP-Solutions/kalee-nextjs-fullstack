@@ -9,8 +9,8 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import type { Relation } from "typeorm";
-import type { Order } from "./Order";
-import type { Product } from "./Product";
+import { Order } from "./Order";
+import { Product } from "./Product";
 
 @Entity({ name: "order_items" })
 @Index("IDX_ORDER_ITEMS_ORDER_ID", ["order_id"])
@@ -19,11 +19,11 @@ export class OrderItem {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @ManyToOne("Order", "orderItems", { onDelete: "CASCADE" })
+  @ManyToOne(() => Order, (order) => order.orderItems, { onDelete: "CASCADE" })
   @JoinColumn({ name: "order_id" })
   order!: Relation<Order>;
 
-  @ManyToOne("Product", undefined, { onDelete: "SET NULL", nullable: true })
+  @ManyToOne(() => Product, { onDelete: "SET NULL", nullable: true })
   @JoinColumn({ name: "product_id" })
   product?: Relation<Product> | null;
 

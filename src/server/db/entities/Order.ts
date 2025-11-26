@@ -7,7 +7,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import type { Relation } from "typeorm";
-import type { OrderItem } from "./OrderItem";
+import { OrderItem } from "./OrderItem";
 
 export enum OrderStatus {
   PENDING = "pending",
@@ -60,7 +60,7 @@ export class Order {
   @Column({ name: "notes", type: "text", nullable: true })
   notes?: string | null;
 
-  @OneToMany("OrderItem", "order", { cascade: true })
+  @OneToMany(() => OrderItem, (orderItem) => orderItem.order, { cascade: true })
   orderItems!: Relation<OrderItem>[];
 
   @CreateDateColumn({ type: "timestamptz", name: "created_at" })
