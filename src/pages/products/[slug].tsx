@@ -1,3 +1,5 @@
+//comment//
+
 import { getProductRepository } from "@/server/db/client";
 import type { Product } from "@/server/db/entities/Product";
 import Image from "next/image";
