@@ -9,3 +9,4 @@
   NODE_VERSION = "18"
   NPM_VERSION = "9"
   NPM_FLAGS = "--include=dev"
+  SECRETS_SCAN_OMIT_KEYS = "MY_AWS_REGION"
