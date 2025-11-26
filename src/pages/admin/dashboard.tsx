@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import type { AdminSession } from "@/types/admin";
 import { withAdminGuard } from "@/server/auth/adminSession";
-import type { NextPageWithMeta } from "../_app";
+import type { NextPageWithMeta } from "@/pages/_app";
 
 type DashboardData = {
   totals: {
@@ -78,10 +78,11 @@ const Dashboard: NextPageWithMeta<DashboardProps> = ({ session }) => {
 
         const payload = (await response.json()) as DashboardData;
         setDashboardData(payload);
-      } catch (fetchError: any) {
+      } catch (fetchError: unknown) {
         if (controller.signal.aborted) return;
         console.error("[Dashboard]", fetchError);
-        setError(fetchError?.message ?? "Unexpected error while loading dashboard data");
+        const message = fetchError instanceof Error ? fetchError.message : "Unexpected error while loading dashboard data";
+        setError(message);
       } finally {
         if (!controller.signal.aborted) {
           setIsLoading(false);
@@ -98,29 +99,32 @@ const Dashboard: NextPageWithMeta<DashboardProps> = ({ session }) => {
         });
 
         if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error((payload as { error?: string })?.error ?? "Failed to load profile");
+          // Silent fail on profile load or log it
+          console.warn("Failed to load profile");
+          return;
         }
 
-        const payload = (await response.json()) as typeof profileDefaults;
-        setProfile({
-          logoUrl: payload.logoUrl ?? profileDefaults.logoUrl,
-          contactEmail: payload.contactEmail,
-          phone: payload.phone,
-          addressLine1: payload.addressLine1,
-          addressLine2: payload.addressLine2,
-        });
-      } catch (profileError) {
-        if (controller.signal.aborted) return;
-        console.error("[Dashboard][profile]", profileError);
+        const data = await response.json();
+        if (data) {
+          setProfile({
+            logoUrl: data.logoUrl ?? profileDefaults.logoUrl,
+            contactEmail: data.contactEmail ?? profileDefaults.contactEmail,
+            phone: data.phone ?? profileDefaults.phone,
+            addressLine1: data.addressLine1 ?? profileDefaults.addressLine1,
+            addressLine2: data.addressLine2 ?? profileDefaults.addressLine2,
+          });
+        }
+      } catch (err) {
+        // ignore aborts
+        if ((err as Error).name !== "AbortError") {
+          console.warn("[Dashboard] profile load error", err);
+        }
       }
     };
 
     loadProfile();
 
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, []);
 
   const totals = dashboardData?.totals ?? { products: 0, categories: 0, orders: 0, revenue: 0 };
@@ -143,15 +147,14 @@ const Dashboard: NextPageWithMeta<DashboardProps> = ({ session }) => {
     [profile.contactEmail, profile.phone, totals.categories, totals.orders, totals.products, totals.revenue],
   );
 
+  const logoPreviewSrc = useMemo(() => {
+    const raw = (profile.logoUrl ?? "").trim();
+    if (!raw) return "/Kealee.png";
+    if (raw.startsWith("http") || raw.startsWith("/")) return raw;
+    return `/${raw.replace(/^[\/]+/, "")}`;
+  }, [profile.logoUrl]);
+
   const trimmedLogo = (profile.logoUrl ?? "").trim();
-  const normalizedLogo = trimmedLogo
-    ? trimmedLogo.startsWith("http") || trimmedLogo.startsWith("data:")
-      ? trimmedLogo
-      : trimmedLogo.startsWith("/")
-      ? trimmedLogo
-      : `/${trimmedLogo.replace(/^[\/]+/, "")}`
-    : "";
-  const logoPreviewSrc = normalizedLogo || "/Kealee.png";
 
   const handleProfileChange = (
     field: keyof typeof profileDefaults,
@@ -181,9 +184,10 @@ const Dashboard: NextPageWithMeta<DashboardProps> = ({ session }) => {
       const payload = (await response.json()) as typeof profileDefaults;
       setProfile(payload);
       setSaveMessage("Profile updated successfully.");
-    } catch (saveError: any) {
+    } catch (saveError: unknown) {
       console.error("[Dashboard][profile.submit]", saveError);
-      setSaveMessage(saveError?.message ?? "Failed to save profile.");
+      const message = saveError instanceof Error ? saveError.message : "Failed to save profile.";
+      setSaveMessage(message);
     } finally {
       setIsSavingProfile(false);
     }
@@ -337,6 +341,7 @@ const Dashboard: NextPageWithMeta<DashboardProps> = ({ session }) => {
               <div>
                 <p className="text-sm font-semibold text-slate-600">Site Logo</p>
                 <div className="mt-3 flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 p-4 text-center">
+                  {/* eslint-disable @next/next/no-img-element */}
                   {trimmedLogo ? (
                     <img src={logoPreviewSrc} alt="Current logo" className="h-16 w-auto" />
                   ) : (

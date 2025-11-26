@@ -29,16 +29,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           name: category.name,
           slug: category.slug,
           description: category.description,
-          productCount: (category as any).products?.length ?? 0,
+          productCount: (category as { products?: unknown[] }).products?.length ?? 0,
           createdAt: category.createdAt,
           updatedAt: category.updatedAt,
         }))
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[categories.get] Full error:", error);
-      console.error("[categories.get] Error stack:", error?.stack);
-      const errorMessage = error?.message || String(error);
-      const errorCode = error?.code;
+      if (error instanceof Error) {
+        console.error("[categories.get] Error stack:", error.stack);
+      }
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorCode = (error as { code?: string })?.code;
       
       // Provide user-friendly error messages
       let userMessage = "Failed to load categories";
@@ -92,10 +94,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         createdAt: saved.createdAt,
         updatedAt: saved.updatedAt,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[categories.post]", error);
-      const errorMessage = error?.message || String(error);
-      const isDuplicate = error?.code === "23505";
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isDuplicate = (error as { code?: string })?.code === "23505";
       const message = isDuplicate ? "Category slug already exists" : "Failed to create category";
       res.status(500).json({ 
         error: message,
@@ -128,9 +130,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const saved = await repo.save(category);
       res.status(200).json(saved);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[categories.put]", error);
-      const message = error?.code === "23505" ? "Category slug already exists" : "Failed to update category";
+      const message = (error as { code?: string })?.code === "23505" ? "Category slug already exists" : "Failed to update category";
       res.status(500).json({ error: message });
     }
     return;
@@ -163,11 +165,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   res.setHeader("Allow", ["GET", "POST", "PUT", "DELETE"]);
   res.status(405).end("Method Not Allowed");
-  } catch (topLevelError: any) {
+  } catch (topLevelError: unknown) {
     // Catch any unhandled errors
     console.error("[categories] Top-level error:", topLevelError);
-    console.error("[categories] Error stack:", topLevelError?.stack);
-    const errorMessage = topLevelError?.message || String(topLevelError);
+    if (topLevelError instanceof Error) {
+      console.error("[categories] Error stack:", topLevelError.stack);
+    }
+    const errorMessage = topLevelError instanceof Error ? topLevelError.message : String(topLevelError);
     res.status(500).json({ 
       error: "Internal server error",
       details: process.env.NODE_ENV !== "production" ? errorMessage : undefined

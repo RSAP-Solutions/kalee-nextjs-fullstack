@@ -46,20 +46,20 @@ const createDatabase = async () => {
       await adminClient.query(`CREATE DATABASE "${dbName}"`);
       console.log(`✅ Database "${dbName}" created successfully`);
     }
-  } catch (error: any) {
-    if (error.code === "3D000") {
+  } catch (error: unknown) {
+    if ((error as { code?: string })?.code === "3D000") {
       // Database doesn't exist, try creating it
       try {
         await adminClient.query(`CREATE DATABASE "${dbName}"`);
         console.log(`✅ Database "${dbName}" created successfully`);
-      } catch (createError: any) {
+      } catch (createError: unknown) {
         console.error(`❌ Failed to create database "${dbName}"`);
-        console.error(createError.message);
+        console.error(createError instanceof Error ? createError.message : String(createError));
         process.exit(1);
       }
     } else {
       console.error("❌ Failed to connect or create database");
-      console.error(error.message);
+      console.error(error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   } finally {

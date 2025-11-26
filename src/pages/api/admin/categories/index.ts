@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdminApi } from "@/server/auth/adminSession";
 import { getCategoryRepository, getProductRepository } from "@/server/db/client";
-import type { Category } from "@/server/db/entities/Category";
 
 export default async function handler(
   req: NextApiRequest,
@@ -150,18 +149,20 @@ export default async function handler(
     }
 
     return res.status(405).json({ error: "Method not allowed" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[admin.categories] Error details:", error);
-    console.error("[admin.categories] Error stack:", error?.stack);
+    if (error instanceof Error) {
+      console.error("[admin.categories] Error stack:", error.stack);
+    }
     
     // Send detailed error in development, generic in production
     const errorMessage = process.env.NODE_ENV === 'development' 
-      ? error?.message || 'Unknown error'
+      ? (error instanceof Error ? error.message : 'Unknown error')
       : 'Internal server error';
       
     return res.status(500).json({ 
       error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      details: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
     });
   }
 }

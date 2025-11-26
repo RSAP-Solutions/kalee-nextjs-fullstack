@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { AdminTable, Column } from "@/components/admin/Table";
-import type { NextPageWithMeta } from "../_app";
+import type { NextPageWithMeta } from "@/pages/_app";
 import { GalleryItemStatus, type GalleryItemPayload, type GalleryItemResponse } from "@/types/gallery";
 import { format } from "date-fns";
 
@@ -69,9 +69,10 @@ const GalleryAdmin: NextPageWithMeta = () => {
       }
       const data = (await response.json()) as GalleryItemResponse[];
       setItems(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[admin.gallery.fetch]", err);
-      setError(err?.message ?? "Failed to load gallery");
+      const message = err instanceof Error ? err.message : "Failed to load gallery";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -154,9 +155,10 @@ const GalleryAdmin: NextPageWithMeta = () => {
 
       await fetchItems();
       closeModal();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[admin.gallery.save]", err);
-      setError(err?.message ?? "Failed to save gallery item");
+      const message = err instanceof Error ? err.message : "Failed to save gallery item";
+      setError(message);
     } finally {
       setIsSaving(false);
     }
@@ -180,9 +182,10 @@ const GalleryAdmin: NextPageWithMeta = () => {
       }
       await fetchItems();
       setDeleteId(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[admin.gallery.delete]", err);
-      setError(err?.message ?? "Failed to delete gallery item");
+      const message = err instanceof Error ? err.message : "Failed to delete gallery item";
+      setError(message);
     }
   };
 

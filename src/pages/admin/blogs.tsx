@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { AdminTable, Column } from "@/components/admin/Table";
-import type { NextPageWithMeta } from "../_app";
+import type { NextPageWithMeta } from "@/pages/_app";
 import { BlogItemStatus, type BlogItemPayload, type BlogItemResponse } from "@/types/blog";
 import { format } from "date-fns";
 
@@ -66,13 +66,16 @@ const BlogsAdmin: NextPageWithMeta = () => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("[admin.blog.fetch] Response error:", errorText);
-        throw new Error(`Failed to load blog posts (${response.status})`);
+        const data = await response.json().catch(() => null);
+        throw new Error((data as { error?: string })?.error ?? "Failed to load blog posts");
       }
+
       const data = (await response.json()) as BlogItemResponse[];
       setItems(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[admin.blog.fetch]", err);
-      setError(err?.message ?? "Failed to load blog posts");
+      const message = err instanceof Error ? err.message : "Failed to load blog posts";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -149,9 +152,10 @@ const BlogsAdmin: NextPageWithMeta = () => {
 
       await fetchItems();
       closeModal();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[admin.blog.save]", err);
-      setError(err?.message ?? "Failed to save blog post");
+      const message = err instanceof Error ? err.message : "Failed to save blog post";
+      setError(message);
     } finally {
       setIsSaving(false);
     }
@@ -176,9 +180,10 @@ const BlogsAdmin: NextPageWithMeta = () => {
       }
       await fetchItems();
       setDeleteId(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[admin.blog.delete]", err);
-      setError(err?.message ?? "Failed to delete blog post");
+      const message = err instanceof Error ? err.message : "Failed to delete blog post";
+      setError(message);
     }
   };
 

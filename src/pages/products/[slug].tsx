@@ -3,7 +3,7 @@ import { getProductRepository } from "@/server/db/client";
 import type { Product } from "@/server/db/entities/Product";
 import Image from "next/image";
 import Link from "next/link";
-import type { NextPageWithMeta } from "../../_app";
+import type { NextPageWithMeta } from "@/pages/_app";
 
 type ProductPageProps = {
   product: Product | null;
@@ -18,7 +18,7 @@ const ProductPage: NextPageWithMeta<ProductPageProps> = ({ product }) => {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-navy">Product Not Found</h1>
-          <p className="mt-2 text-slate-600">The product you're looking for doesn't exist.</p>
+          <p className="mt-2 text-slate-600">The product you&apos;re looking for doesn&apos;t exist.</p>
           <Link href="/products" className="mt-4 inline-block btn-primary">
             Back to Products
           </Link>
@@ -224,9 +224,9 @@ export const getStaticProps: GetStaticProps<ProductPageProps> = async ({ params 
   }
 };
 
-ProductPage.meta = ({ product }: ProductPageProps) => ({
-  title: product ? `${product.title} | Kealee Construction` : "Product | Kealee Construction",
-  description: product ? product.description : "Product details for Kealee Construction",
-});
+ProductPage.meta = {
+  title: "Product | Kealee Construction",
+  description: "Product details for Kealee Construction",
+};
 
 export default ProductPage;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { NextPageWithMeta } from "./_app";
@@ -186,7 +186,7 @@ const BlogListingPage: NextPageWithMeta = () => {
             Ready to Start Your Project?
           </h2>
           <p className="text-lg text-white/80">
-            Let's create something amazing together. We handle everything from design
+            Let&apos;s create something amazing together. We handle everything from design
             to final walkthrough.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">

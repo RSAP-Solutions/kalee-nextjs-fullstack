@@ -2,11 +2,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Image from "next/image";
-import type { NextPageWithMeta } from "../_app";
+import type { NextPageWithMeta } from "@/pages/_app";
 import type { BlogItemResponse } from "@/types/blog";
-
-const placeholderImage =
-  "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nNDAwJyBoZWlnaHQ9JzI1MCcgZmlsbD0nI0VCREVGNycgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJz48cmVjdCB3aWR0aD0nNDAwJyBoZWlnaHQ9JzI1MCcgcng9JzE2Jy8+PHRleHQgeD0nMjAwJyB5PScxMjUnIGZvbnQtc2l6ZT0nNDAnIGZpbGw9JyM4MDg4OTAnIHRleHQtYW5jaG9yPSdtaWRkbGUnPkJsb2c8L3RleHQ+PC9zdmc+";
 
 const BlogPostPage: NextPageWithMeta = () => {
   const router = useRouter();
@@ -54,7 +51,7 @@ const BlogPostPage: NextPageWithMeta = () => {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-navy mb-4">Post Not Found</h1>
-          <p className="text-slate-600 mb-6">{error || "This blog post doesn't exist."}</p>
+          <p className="text-slate-600 mb-6">{error || "This blog post doesn&apos;t exist."}</p>
           <Link href="/blog-listing" className="btn-primary">
             Back to Blog
           </Link>
@@ -130,7 +127,7 @@ const BlogPostPage: NextPageWithMeta = () => {
               Ready to start your own project?
             </h3>
             <p className="text-slate-600 mb-6">
-              Let's create something amazing together.
+              Let&apos;s create something amazing together.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <Link href="/quote" className="btn-primary">

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { NextPageWithMeta } from "../_app";
+import type { NextPageWithMeta } from "@/pages/_app";
 
 const serviceCards = [
   {

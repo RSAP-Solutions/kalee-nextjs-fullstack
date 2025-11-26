@@ -68,19 +68,21 @@ export const getDataSource = async () => {
   if (!appDataSource.isInitialized) {
     try {
       await appDataSource.initialize();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[getDataSource] Initialization error:", error);
-      console.error("[getDataSource] Error code:", error?.code);
-      console.error("[getDataSource] Error message:", error?.message);
+      const errorCode = (error as { code?: string })?.code;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("[getDataSource] Error code:", errorCode);
+      console.error("[getDataSource] Error message:", errorMessage);
       // Check if it's a connection error
-      if (error?.code === "ECONNREFUSED" || error?.code === "ENOTFOUND" || error?.message?.includes("connect")) {
+      if (errorCode === "ECONNREFUSED" || errorCode === "ENOTFOUND" || errorMessage.includes("connect")) {
         throw new Error(
           `Cannot connect to database at ${process.env.DATABASE_HOST || "unknown"}:${process.env.DATABASE_PORT || 5432}.\n` +
           `Please ensure:\n` +
           `1. Your PostgreSQL database is running\n` +
           `2. Connection settings in .env.local are correct\n` +
           `3. The database exists and is accessible\n` +
-          `Error: ${error.message}`
+          `Error: ${errorMessage}`
         );
       }
       throw error;

@@ -3,7 +3,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { AdminTable, Column } from "@/components/admin/Table";
 import type { AdminSession } from "@/types/admin";
 import { withAdminGuard } from "@/server/auth/adminSession";
-import type { NextPageWithMeta } from "../_app";
+import type { NextPageWithMeta } from "@/pages/_app";
 
 type CategoryResponse = {
   id: string;
@@ -86,9 +86,10 @@ const CategoriesAdmin: NextPageWithMeta<CategoriesAdminProps> = ({ session }) =>
       console.log("[admin.categories] Loaded categories:", categoryData.length);
       setCategories(categoryData);
       setProducts(productData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[admin.categories.fetch]", err);
-      setError(err?.message ?? "Failed to load data");
+      const message = err instanceof Error ? err.message : "Failed to load data";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -244,11 +245,16 @@ const CategoriesAdmin: NextPageWithMeta<CategoriesAdminProps> = ({ session }) =>
           console.log("[admin.categories] Category updated successfully");
         }
 
+        if (categoryId) {
+          await syncProductAssignments(categoryId, formState.productIds);
+        }
+
         await fetchData();
         closeModal();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("[admin.categories.save]", err);
-        setError(err?.message ?? "Failed to save category");
+        const message = err instanceof Error ? err.message : "Failed to save category";
+        setError(message);
       } finally {
         setIsSaving(false);
       }
@@ -280,13 +286,14 @@ const CategoriesAdmin: NextPageWithMeta<CategoriesAdminProps> = ({ session }) =>
       console.log("[admin.categories] Category deleted successfully");
       await fetchData();
       setDeleteTarget(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[admin.categories.delete]", err);
-      setError(err?.message ?? "Failed to delete category");
+      const message = err instanceof Error ? err.message : "Failed to delete category";
+      setError(message);
     } finally {
       setIsDeleting(false);
     }
-  }, [deleteTarget, fetchData]);
+  }, [deleteTarget, fetchData, syncProductAssignments]);
 
   const columns: Column<AdminCategoryRow>[] = useMemo(
     () => [

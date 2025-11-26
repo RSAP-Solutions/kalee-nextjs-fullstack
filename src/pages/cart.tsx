@@ -1,7 +1,6 @@
 import { useState, useEffect, FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/router";
 import type { NextPageWithMeta } from "./_app";
 import {
   getCart,
@@ -39,7 +38,6 @@ const shippingMethods = [
 ];
 
 const Cart: NextPageWithMeta = () => {
-  const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [shippingForm, setShippingForm] = useState<ShippingFormState>(emptyShippingForm);

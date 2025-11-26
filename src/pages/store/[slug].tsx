@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import Image from "next/image";
 import Link from "next/link";
-import type { NextPageWithMeta } from "../_app";
+import type { NextPageWithMeta } from "@/pages/_app";
 import { getProductBySlug, products } from "@/data/products";
 import { addToCart } from "@/utils/cart";
 import { Facebook, Twitter } from "lucide-react";

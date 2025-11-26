@@ -1,6 +1,6 @@
 import type { GetStaticPaths, GetStaticProps } from "next";
 import Link from "next/link";
-import type { NextPageWithMeta } from "../_app";
+import type { NextPageWithMeta } from "@/pages/_app";
 import { blogSlugs, findBlogPost, type BlogPost } from "@/data/blogs";
 
 type BlogPageProps = {

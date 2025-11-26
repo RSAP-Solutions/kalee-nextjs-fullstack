@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import type { NextPageWithMeta } from "../_app";
+import type { NextPageWithMeta } from "@/pages/_app";
 import { fetchSession, login } from "@/utils/adminAuth";
 
 const AdminLogin: NextPageWithMeta = () => {
@@ -46,8 +46,9 @@ const AdminLogin: NextPageWithMeta = () => {
     try {
       await login(username.trim(), password);
       router.push("/admin/dashboard");
-    } catch (loginError: any) {
-      setError(loginError?.message ?? "Invalid username or password.");
+    } catch (loginError: unknown) {
+      const message = loginError instanceof Error ? loginError.message : "Invalid username or password.";
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }

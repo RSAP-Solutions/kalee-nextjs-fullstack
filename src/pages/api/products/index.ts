@@ -30,9 +30,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           updatedAt: product.updatedAt,
         }))
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[products.get]", error);
-      const errorMessage = error?.message || String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       let userMessage = "Failed to load products";
       if (errorMessage.includes("Missing required database environment variables")) {
         userMessage = "Database configuration error. Please check your .env.local file.";
@@ -80,9 +80,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const saved = await repo.save(product);
       res.status(201).json(saved);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[products.post]", error);
-      const message = error?.code === "23505" ? "Product slug already exists" : "Failed to create product";
+      const message = (error as { code?: string })?.code === "23505" ? "Product slug already exists" : "Failed to create product";
       res.status(500).json({ error: message });
     }
     return;
@@ -131,9 +131,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const saved = await repo.save(product);
       res.status(200).json(saved);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[products.put]", error);
-      const message = error?.code === "23505" ? "Product slug already exists" : "Failed to update product";
+      const message = (error as { code?: string })?.code === "23505" ? "Product slug already exists" : "Failed to update product";
       res.status(500).json({ error: message });
     }
     return;

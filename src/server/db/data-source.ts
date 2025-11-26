@@ -32,26 +32,6 @@ const sslConfig = () => {
   return process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false;
 };
 
-// Validate required environment variables (lazy - only when needed)
-const validateEnvVars = () => {
-  const required = ["DATABASE_HOST", "DATABASE_USER", "DATABASE_PASSWORD", "DATABASE_NAME"];
-  const missing = required.filter((key) => !process.env[key]);
-  
-  if (missing.length > 0) {
-    const envFile = process.env.NODE_ENV === "production" ? ".env.production" : ".env.local";
-    throw new Error(
-      `Missing required database environment variables: ${missing.join(", ")}\n\n` +
-      `Please create a ${envFile} file in the project root with:\n` +
-      `DATABASE_HOST=localhost\n` +
-      `DATABASE_PORT=5432\n` +
-      `DATABASE_USER=your_username\n` +
-      `DATABASE_PASSWORD=your_password\n` +
-      `DATABASE_NAME=your_database_name\n` +
-      `DATABASE_SSL=false\n\n` +
-      `Then restart your Next.js development server.`
-    );
-  }
-};
 
 // Create DataSource options function (lazy evaluation)
 const getDataSourceOptions = (): DataSourceOptions => {

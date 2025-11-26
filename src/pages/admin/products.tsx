@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { AdminTable, Column } from "@/components/admin/Table";
-import type { NextPageWithMeta } from "../_app";
+import type { NextPageWithMeta } from "@/pages/_app";
 
 type CategoryOption = {
   id: string;
@@ -88,9 +88,10 @@ const ProductsAdmin: NextPageWithMeta = () => {
       console.log("[admin.products] Loaded products:", productData.length);
       setProducts(productData);
       setCategories(categoryData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[admin.products.fetch]", err);
-      setError(err?.message ?? "Failed to load data");
+      const message = err instanceof Error ? err.message : "Failed to load data";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -116,7 +117,7 @@ const ProductsAdmin: NextPageWithMeta = () => {
   const openCreateModal = useCallback(() => {
     setModalMode("create");
     setEditingId(null);
-    setFormState((prev) => ({
+    setFormState(() => ({
       ...emptyForm,
       categoryId: categoryOptions[0]?.id ?? "",
     }));
@@ -228,9 +229,10 @@ const ProductsAdmin: NextPageWithMeta = () => {
 
         await fetchData();
         closeModal();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("[admin.products.save]", err);
-        setError(err?.message ?? "Failed to save product");
+        const message = err instanceof Error ? err.message : "Failed to save product";
+        setError(message);
       } finally {
         setIsSaving(false);
       }
@@ -258,9 +260,10 @@ const ProductsAdmin: NextPageWithMeta = () => {
       console.log("[admin.products] Product deleted successfully");
       await fetchData();
       setDeleteTarget(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[admin.products.delete]", err);
-      setError(err?.message ?? "Failed to delete product");
+      const message = err instanceof Error ? err.message : "Failed to delete product";
+      setError(message);
     } finally {
       setIsDeleting(false);
     }

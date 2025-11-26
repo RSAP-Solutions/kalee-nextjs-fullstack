@@ -61,7 +61,7 @@ export function getTokenFromRequest(req: NextApiRequest | GetServerSidePropsCont
 }
 
 export function getSessionFromRequest(req: NextApiRequest | GetServerSidePropsContext["req"]): AdminSession | null {
-  const token = (req as any).cookies?.[AUTH_COOKIE_NAME] ?? getTokenFromRequest(req);
+  const token = (req as { cookies?: Record<string, string> }).cookies?.[AUTH_COOKIE_NAME] ?? getTokenFromRequest(req);
   if (!token) return null;
   return verifyAdminToken(token);
 }

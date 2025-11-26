@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import type { NextPageWithMeta } from "../_app";
+import type { NextPageWithMeta } from "@/pages/_app";
 
 const placeholderImage =
   "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nNDAwJyBoZWlnaHQ9JzMwMCcgZmlsbD0nI0VCREVGNycgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJz48cmVjdCB3aWR0aD0nNDAwJyBoZWlnaHQ9JzMwMCcgcng9JzE2Jy8+PHRleHQgeD0nMjAwJyB5PScxNTAnIGZvbnQtc2l6ZT0nNDAnIGZpbGw9JyM4MDg4OTAnIHRleHQtYW5jaG9yPSdtaWRkbGUnPlByb2R1Y3Q8L3RleHQ+PC9zdmc+";
@@ -97,7 +97,7 @@ const ProductsPage: NextPageWithMeta = () => {
         const data = await response.json();
         console.log("[products] Loaded products:", data.length);
         setProducts(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("[products.fetch]", err);
       } finally {
         setIsLoading(false);
@@ -213,7 +213,7 @@ const ProductsPage: NextPageWithMeta = () => {
             Ready to Start Your Project?
           </h2>
           <p className="text-lg text-white/80">
-            Let's create something amazing together. We handle everything from design
+            Let&apos;s create something amazing together. We handle everything from design
             to final walkthrough.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
