@@ -3,17 +3,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { NextPageWithMeta } from "./_app";
-import {
-  galleryFilters,
-  galleryProjects,
-  type GalleryItem,
-} from "@/data/gallery";
+import type { GalleryItemResponse } from "@/types/gallery";
 
 const placeholderImage =
   "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nNDAwJyBoZWlnaHQ9JDI1MCcgZmlsbD0nI0VCREVGNycgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJz48cmVjdCB3aWR0aD0nNDAwJyBoZWlnaHQ9JzI1MCcgcng9JzE2Jy8+PHRleHQgeD0nMjAwJyB5PScxMjUnIGZvbnQtc2l6ZT0nNDAnIGZpbGw9JyM4MDg4OTAnIHRleHQtYW5jaG9yPSdtaWRkbGUnPkdhbGxlcnk8L3RleHQ+PC9zdmc+";
 
 type GalleryCardProps = {
-  project: GalleryItem;
+  project: GalleryItemResponse;
   onSelect: () => void;
 };
 
@@ -32,7 +28,7 @@ const GalleryCard = ({ project, onSelect }: GalleryCardProps) => (
   >
     <div className="relative h-56 w-full bg-slate-100">
       <Image
-        src={project.image ?? placeholderImage}
+        src={project.coverImage ?? placeholderImage}
         alt={project.title}
         fill
         className="object-cover"
@@ -43,9 +39,11 @@ const GalleryCard = ({ project, onSelect }: GalleryCardProps) => (
     <div className="space-y-3 px-6 py-5">
       <h3 className="text-lg font-semibold text-navy">{project.title}</h3>
       <p className="text-sm text-slate-600">{project.description}</p>
-      <p className="text-sm font-medium text-slate-500">
-        <span className="font-semibold text-navy">Location:</span> {project.location}
-      </p>
+      {project.location && (
+        <p className="text-sm font-medium text-slate-500">
+          <span className="font-semibold text-navy">Location:</span> {project.location}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         {project.tags.map((tag) => (
           <span
@@ -61,24 +59,50 @@ const GalleryCard = ({ project, onSelect }: GalleryCardProps) => (
 );
 
 const GalleryPage: NextPageWithMeta = () => {
-  const [activeFilter, setActiveFilter] = useState<string>(galleryFilters[0]);
-  const [selectedProject, setSelectedProject] = useState<GalleryItem | null>(null);
+  const [projects, setProjects] = useState<GalleryItemResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<string>("All");
+  const [selectedProject, setSelectedProject] = useState<GalleryItemResponse | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch("/api/gallery");
+        if (!response.ok) throw new Error("Failed to load gallery");
+        const data = await response.json();
+        setProjects(data);
+      } catch (err) {
+        console.error("[gallery.fetch]", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    void fetchProjects();
+  }, []);
+
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    projects.forEach((p) => p.tags.forEach((t) => tags.add(t)));
+    return Array.from(tags);
+  }, [projects]);
+
+  const filters = ["All", ...allTags];
 
   const filteredProjects = useMemo(() => {
     if (activeFilter === "All") {
-      return galleryProjects;
+      return projects;
     }
-    return galleryProjects.filter((project) =>
+    return projects.filter((project) =>
       project.tags.some((tag) => tag.toLowerCase() === activeFilter.toLowerCase())
     );
-  }, [activeFilter]);
+  }, [activeFilter, projects]);
 
   const selectedImages = selectedProject
-    ? selectedProject.images?.length
-      ? selectedProject.images
-      : selectedProject.image
-      ? [selectedProject.image]
+    ? selectedProject.imageUrls?.length
+      ? selectedProject.imageUrls
+      : selectedProject.coverImage
+      ? [selectedProject.coverImage]
       : [placeholderImage]
     : [];
 
@@ -136,7 +160,7 @@ const GalleryPage: NextPageWithMeta = () => {
       <section className="px-4 sm:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-content flex-col gap-10">
           <div className="flex flex-wrap items-center justify-center gap-3">
-            {galleryFilters.map((filter) => {
+            {filters.map((filter) => {
               const isActive = activeFilter === filter;
               return (
                 <button
@@ -157,20 +181,20 @@ const GalleryPage: NextPageWithMeta = () => {
           </div>
 
           <div className="columns-1 gap-6 sm:columns-2 lg:columns-3">
-            {filteredProjects.map((project) => (
-              <GalleryCard
-                key={project.title}
-                project={project}
-                onSelect={() => setSelectedProject(project)}
-              />
-            ))}
+            {isLoading ? (
+              <p className="col-span-full text-center text-slate-600">Loading gallery...</p>
+            ) : filteredProjects.length === 0 ? (
+              <p className="col-span-full text-center text-slate-600">No projects found.</p>
+            ) : (
+              filteredProjects.map((project) => (
+                <GalleryCard
+                  key={project.id}
+                  project={project}
+                  onSelect={() => setSelectedProject(project)}
+                />
+              ))
+            )}
           </div>
-
-          <p className="text-center text-sm text-slate-600">
-            <strong className="font-semibold text-navy">Note:</strong> Replace these
-            placeholders with photos of your completed projects by updating the
-            image sources in <code className="font-mono text-xs">galleryProjects</code>.
-          </p>
         </div>
       </section>
 

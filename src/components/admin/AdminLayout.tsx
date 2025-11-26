@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { ReactNode, useEffect, useState } from "react";
-import { getCurrentAdmin, isAuthenticated, logout } from "@/utils/adminAuth";
+import type { AdminSession } from "@/types/admin";
+import { fetchSession, logout } from "@/utils/adminAuth";
 
 const adminLinks = [
   { label: "Dashboard", href: "/admin/dashboard" },
@@ -11,25 +12,53 @@ const adminLinks = [
   { label: "Products", href: "/admin/products" },
 ];
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
+type AdminLayoutProps = {
+  children: ReactNode;
+  session?: AdminSession;
+};
+
+export default function AdminLayout({ children, session: initialSession }: AdminLayoutProps) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
-  const [user, setUser] = useState(getCurrentAdmin());
+  const [user, setUser] = useState<AdminSession | null>(initialSession ?? null);
 
   useEffect(() => {
-    const check = () => {
-      if (!isAuthenticated()) {
-        router.replace("/admin");
-      } else {
-        setUser(getCurrentAdmin());
-      }
+    let cancelled = false;
+
+    if (initialSession) {
+      setUser(initialSession);
       setReady(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const ensureSession = async () => {
+      try {
+        const session = await fetchSession();
+        if (cancelled) return;
+
+        if (!session) {
+          router.replace("/admin");
+          return;
+        }
+
+        setUser(session);
+        setReady(true);
+      } catch (error) {
+        console.error("[AdminLayout] Failed to load session", error);
+        if (!cancelled) {
+          router.replace("/admin");
+        }
+      }
     };
 
-    check();
-    window.addEventListener("adminAuthChanged", check);
-    return () => window.removeEventListener("adminAuthChanged", check);
-  }, [router]);
+    ensureSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialSession, router]);
 
   if (!ready) {
     return (
@@ -65,9 +94,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               })}
             </nav>
             <button
-              onClick={() => {
-                logout();
-                router.replace("/admin");
+              onClick={async () => {
+                try {
+                  await logout();
+                } catch (error) {
+                  console.error("[AdminLayout] Logout failed", error);
+                } finally {
+                  router.replace("/admin");
+                }
               }}
               className="mt-4 w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
             >

@@ -1,30 +1,63 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import type { NextPageWithMeta } from "../_app";
-import { isAuthenticated, login } from "@/utils/adminAuth";
+import { fetchSession, login } from "@/utils/adminAuth";
 
 const AdminLogin: NextPageWithMeta = () => {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      router.replace("/admin/dashboard");
-    }
+    let cancelled = false;
+
+    const ensureLoggedOut = async () => {
+      try {
+        const session = await fetchSession();
+        if (cancelled) return;
+        if (session) {
+          router.replace("/admin/dashboard");
+          return;
+        }
+      } catch (checkError) {
+        console.error("[AdminLogin] Session check failed", checkError);
+      } finally {
+        if (!cancelled) {
+          setIsChecking(false);
+        }
+      }
+    };
+
+    ensureLoggedOut();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const ok = login(username.trim(), password);
-    if (ok) {
+    setIsSubmitting(true);
+
+    try {
+      await login(username.trim(), password);
       router.push("/admin/dashboard");
-    } else {
-      setError("Invalid username or password.");
+    } catch (loginError: any) {
+      setError(loginError?.message ?? "Invalid username or password.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  if (isChecking) {
+    return (
+      <div className="min-h-screen p-8 text-center text-slate-600">Checking session…</div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 py-16">
@@ -63,12 +96,9 @@ const AdminLogin: NextPageWithMeta = () => {
               {error}
             </div>
           )}
-          <button type="submit" className="btn-primary justify-center">
-            Sign In
+          <button type="submit" className="btn-primary justify-center" disabled={isSubmitting}>
+            {isSubmitting ? "Signing In…" : "Sign In"}
           </button>
-          <p className="text-center text-xs text-slate-500">
-            Default: admin / kealee@2025
-          </p>
         </form>
       </div>
     </div>

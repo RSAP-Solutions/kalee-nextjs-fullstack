@@ -3,6 +3,7 @@ import type { AppProps } from "next/app";
 import Layout from "@/components/Layout";
 import type { NextPage } from "next";
 import React from "react";
+import { SiteProfileProvider } from "@/providers/SiteProfileProvider";
 
 type PageMeta = {
   title?: string;
@@ -25,8 +26,10 @@ export default function App({
   const meta = Component.meta ?? pageProps?.meta ?? {};
 
   return (
-    <Layout title={meta.title} description={meta.description}>
-      <Component {...pageProps} />
-    </Layout>
+    <SiteProfileProvider>
+      <Layout title={meta.title} description={meta.description}>
+        <Component {...pageProps} />
+      </Layout>
+    </SiteProfileProvider>
   );
 }

@@ -1,41 +1,43 @@
-export type AdminUser = {
-  username: string;
-};
+import type { AdminSession } from "@/types/admin";
 
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "admin123"; // change later to env
-const ADMIN_SESSION_KEY = "kealee_admin_session";
+export async function login(username: string, password: string): Promise<AdminSession> {
+  const response = await fetch("/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
 
-export function login(username: string, password: string): boolean {
-  if (username === ADMIN_USER && password === ADMIN_PASS) {
-    const user: AdminUser = { username };
-    if (typeof window !== "undefined") {
-      localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(user));
-      window.dispatchEvent(new CustomEvent("adminAuthChanged"));
-    }
-    return true;
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const errorMessage = (data as { error?: string })?.error ?? "Login failed";
+    throw new Error(errorMessage);
   }
-  return false;
+
+  return (await response.json()) as AdminSession;
 }
 
-export function logout(): void {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-    window.dispatchEvent(new CustomEvent("adminAuthChanged"));
+export async function logout(): Promise<void> {
+  const response = await fetch("/api/admin/logout", {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const errorMessage = (data as { error?: string })?.error ?? "Logout failed";
+    throw new Error(errorMessage);
   }
 }
 
-export function getCurrentAdmin(): AdminUser | null {
-  if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(ADMIN_SESSION_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as AdminUser;
-  } catch {
+export async function fetchSession(): Promise<AdminSession | null> {
+  const response = await fetch("/api/admin/me");
+
+  if (response.status === 401) {
     return null;
   }
-}
 
-export function isAuthenticated(): boolean {
-  return getCurrentAdmin() !== null;
+  if (!response.ok) {
+    throw new Error("Failed to load admin session");
+  }
+
+  return (await response.json()) as AdminSession;
 }

@@ -1,5 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
+import { useMemo } from "react";
+import { useSiteProfile } from "@/context/SiteProfileContext";
+import { formatPhoneHref } from "@/types/siteProfile";
 
 const services = [
   { label: "Home Additions", href: "/services/home-additions" },
@@ -23,10 +25,11 @@ const services = [
 
 const supportLinks = [
   { label: "Request a Quote", href: "/quote" },
+  { label: "Products", href: "/products" },
   { label: "Testimonials", href: "/testimonials" },
   { label: "FAQ", href: "/faq" },
   { label: "Consultation Services", href: "/consultation-services" },
-  { label: "Blog & Resources", href: "/blog" },
+  { label: "Blog & Resources", href: "/blog-listing" },
   { label: "Gallery", href: "/gallery" },
   { label: "Contact Kealee", href: "/contact" },
 ];
@@ -41,19 +44,27 @@ const serviceAreas = [
 ];
 
 export default function Footer() {
+  const { logoUrl, phone, addressLine1, addressLine2 } = useSiteProfile();
+
+  const logoSrc = useMemo(() => {
+    const raw = (logoUrl ?? "").trim();
+    if (!raw) return "/Kealee.png";
+    if (raw.startsWith("http")) return raw;
+    if (raw.startsWith("/")) return raw;
+    return `/${raw.replace(/^[\\/]+/, "")}`;
+  }, [logoUrl]);
+
+  const phoneLabel = phone?.trim() || "(443) 852-9890";
+  const phoneHref = formatPhoneHref(phoneLabel) ?? "tel:4438529890";
+
   return (
     <footer className="bg-navy text-white">
       <div className="mx-auto w-full max-w-content px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid gap-12 lg:grid-cols-[1.2fr,1fr,1fr]">
           <div className="space-y-6">
             <Link href="/" className="flex items-center gap-3">
-              <Image
-                src="/Kealee.png"
-                alt="Kealee Construction"
-                width={180}
-                height={48}
-                className="h-12 w-auto"
-              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoSrc} alt="Kealee Construction" className="h-12 w-auto" />
               <span className="sr-only">Kealee Construction</span>
             </Link>
             <p className="text-slate-200">
@@ -64,13 +75,15 @@ export default function Footer() {
             <div className="space-y-2 text-sm text-slate-300">
               <p>License #: MHIC #123456 • DC #7654321</p>
               <p>24/7 Emergency Response • Fully Insured & Bonded</p>
+              <p>{addressLine1}</p>
+              {addressLine2 && <p>{addressLine2}</p>}
             </div>
             <div className="flex flex-wrap gap-3">
               <a
-                href="tel:4438529890"
+                href={phoneHref}
                 className="btn-primary bg-amber text-navy hover:bg-amber/90"
               >
-                Call (443) 852-9890
+                Call {phoneLabel}
               </a>
               <Link href="/quote" className="btn-secondary">
                 Request a Quote

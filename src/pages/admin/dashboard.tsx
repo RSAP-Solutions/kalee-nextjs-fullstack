@@ -1,72 +1,157 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import type { AdminSession } from "@/types/admin";
+import { withAdminGuard } from "@/server/auth/adminSession";
 import type { NextPageWithMeta } from "../_app";
 
-const mockActiveOrders = [
-  {
-    id: "ORD-1024",
-    client: "James Carter",
-    service: "Whole House Renovation",
-    status: "In Progress",
-    amount: "$185,000",
-    updated: "2h ago",
-  },
-  {
-    id: "ORD-1016",
-    client: "Riley Chen",
-    service: "Kitchen Remodel",
-    status: "Awaiting Materials",
-    amount: "$64,800",
-    updated: "Today",
-  },
-  {
-    id: "ORD-1009",
-    client: "Sofia Patel",
-    service: "ADA Accessibility",
-    status: "Site Visit",
-    amount: "$32,400",
-    updated: "Yesterday",
-  },
-];
-
-const mockTransactions = [
-  {
-    id: "TX-8895",
-    client: "Marcus Hall",
-    service: "Exterior Upgrade",
-    amount: "$24,950",
-    date: "Nov 18, 2025",
-    method: "Wire",
-  },
-  {
-    id: "TX-8879",
-    client: "Priya Desai",
-    service: "Home Addition",
-    amount: "$142,300",
-    date: "Nov 14, 2025",
-    method: "ACH",
-  },
-  {
-    id: "TX-8844",
-    client: "Jamal Jenkins",
-    service: "Tiny Home Build",
-    amount: "$89,100",
-    date: "Nov 08, 2025",
-    method: "Credit",
-  },
-];
+type DashboardData = {
+  totals: {
+    products: number;
+    categories: number;
+    orders: number;
+    revenue: number;
+  };
+  activeOrders: Array<{
+    id: string;
+    customerName: string;
+    status: string;
+    totalAmount: number;
+    updatedAt: string;
+    headlineItem: string;
+  }>;
+  recentTransactions: Array<{
+    id: string;
+    customerName: string;
+    totalAmount: number;
+    date: string;
+    method: string | null;
+  }>;
+};
 
 const profileDefaults = {
-  logo: "/Kealee.png",
+  logoUrl: "/Kealee.png",
   contactEmail: "build@kealee.com",
   phone: "(443) 852-9890",
   addressLine1: "1220 19th St NW, Suite 200",
   addressLine2: "Washington, DC 20036",
 };
 
-const Dashboard: NextPageWithMeta = () => {
+type DashboardProps = {
+  session: AdminSession;
+};
+
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+const Dashboard: NextPageWithMeta<DashboardProps> = ({ session }) => {
   const [profile, setProfile] = useState(profileDefaults);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadDashboard = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch("/api/admin/dashboard", {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error((payload as { error?: string })?.error ?? "Failed to load dashboard data");
+        }
+
+        const payload = (await response.json()) as DashboardData;
+        setDashboardData(payload);
+      } catch (fetchError: any) {
+        if (controller.signal.aborted) return;
+        console.error("[Dashboard]", fetchError);
+        setError(fetchError?.message ?? "Unexpected error while loading dashboard data");
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadDashboard();
+
+    const loadProfile = async () => {
+      try {
+        const response = await fetch("/api/admin/profile", {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error((payload as { error?: string })?.error ?? "Failed to load profile");
+        }
+
+        const payload = (await response.json()) as typeof profileDefaults;
+        setProfile({
+          logoUrl: payload.logoUrl ?? profileDefaults.logoUrl,
+          contactEmail: payload.contactEmail,
+          phone: payload.phone,
+          addressLine1: payload.addressLine1,
+          addressLine2: payload.addressLine2,
+        });
+      } catch (profileError) {
+        if (controller.signal.aborted) return;
+        console.error("[Dashboard][profile]", profileError);
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  const totals = dashboardData?.totals ?? { products: 0, categories: 0, orders: 0, revenue: 0 };
+
+  const statCards = useMemo(
+    () => {
+      const cards: Array<{ label: string; value: string; helper?: string }> = [
+        { label: "Total Products", value: totals.products.toLocaleString() },
+        { label: "Categories", value: totals.categories.toLocaleString() },
+        { label: "Orders", value: totals.orders.toLocaleString() },
+        { label: "Gross Revenue", value: currencyFormatter.format(totals.revenue) },
+      ];
+
+      const phoneDisplay = profile.phone?.trim() || profileDefaults.phone;
+      const emailDisplay = profile.contactEmail?.trim() || profileDefaults.contactEmail;
+      cards.push({ label: "Primary Phone", value: phoneDisplay, helper: emailDisplay });
+
+      return cards;
+    },
+    [profile.contactEmail, profile.phone, totals.categories, totals.orders, totals.products, totals.revenue],
+  );
+
+  const trimmedLogo = (profile.logoUrl ?? "").trim();
+  const normalizedLogo = trimmedLogo
+    ? trimmedLogo.startsWith("http") || trimmedLogo.startsWith("data:")
+      ? trimmedLogo
+      : trimmedLogo.startsWith("/")
+      ? trimmedLogo
+      : `/${trimmedLogo.replace(/^[\/]+/, "")}`
+    : "";
+  const logoPreviewSrc = normalizedLogo || "/Kealee.png";
 
   const handleProfileChange = (
     field: keyof typeof profileDefaults,
@@ -76,32 +161,54 @@ const Dashboard: NextPageWithMeta = () => {
     setSaveMessage(null);
   };
 
-  const handleProfileSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleProfileSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSaveMessage(
-      "Changes staged locally. Connect the upcoming backend to persist updates."
-    );
+    setSaveMessage(null);
+    setIsSavingProfile(true);
+
+    try {
+      const response = await fetch("/api/admin/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(profile),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error((payload as { error?: string })?.error ?? "Failed to update profile");
+      }
+
+      const payload = (await response.json()) as typeof profileDefaults;
+      setProfile(payload);
+      setSaveMessage("Profile updated successfully.");
+    } catch (saveError: any) {
+      console.error("[Dashboard][profile.submit]", saveError);
+      setSaveMessage(saveError?.message ?? "Failed to save profile.");
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   return (
-    <AdminLayout>
+    <AdminLayout session={session}>
       <div className="space-y-10">
         <div>
           <h1 className="text-2xl font-semibold text-navy">Dashboard</h1>
           <p className="mt-2 text-slate-600">Overview and quick stats.</p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: "Total Products", value: 10 },
-              { label: "Categories", value: 8 },
-              { label: "Blog Posts", value: 12 },
-              { label: "Gallery Items", value: 24 },
-            ].map((s) => (
-              <div key={s.label} className="stat-card">
-                <p className="text-3xl font-bold text-ocean">{s.value}</p>
-                <p className="text-sm text-slate-600">{s.label}</p>
+            {statCards.map((card) => (
+              <div key={card.label} className="stat-card">
+                <p className="text-3xl font-bold text-ocean">{card.value}</p>
+                <p className="text-sm text-slate-600">{card.label}</p>
+                {card.helper && <p className="text-xs text-slate-400">{card.helper}</p>}
               </div>
             ))}
           </div>
+          {error && (
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -112,41 +219,45 @@ const Dashboard: NextPageWithMeta = () => {
                   Active Orders
                 </p>
                 <p className="text-2xl font-semibold text-navy">
-                  {mockActiveOrders.length} ongoing
+                  {isLoading ? "Loading…" : `${dashboardData?.activeOrders.length ?? 0} ongoing`}
                 </p>
               </div>
-              <span className="rounded-full bg-amber/20 px-3 py-1 text-xs font-semibold text-amber">
-                Mock data
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-600">
+                Live data
               </span>
             </header>
             <div className="mt-6 space-y-4">
-              {mockActiveOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="rounded-xl border border-slate-100 px-4 py-3"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-500">
-                        {order.id}
-                      </p>
-                      <p className="text-base font-semibold text-navy">
-                        {order.client}
-                      </p>
-                      <p className="text-sm text-slate-500">{order.service}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-base font-semibold text-navy">
-                        {order.amount}
-                      </p>
-                      <p className="text-xs text-slate-400">Updated {order.updated}</p>
-                      <span className="mt-2 inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                        {order.status}
-                      </span>
+              {isLoading ? (
+                <p className="text-sm text-slate-500">Loading orders…</p>
+              ) : (dashboardData?.activeOrders.length ?? 0) === 0 ? (
+                <p className="text-sm text-slate-500">No active orders at the moment.</p>
+              ) : (
+                dashboardData?.activeOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="rounded-xl border border-slate-100 px-4 py-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-500">{order.id}</p>
+                        <p className="text-base font-semibold text-navy">{order.customerName}</p>
+                        <p className="text-sm text-slate-500">{order.headlineItem}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-base font-semibold text-navy">
+                          {currencyFormatter.format(order.totalAmount)}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          Updated {dateFormatter.format(new Date(order.updatedAt))}
+                        </p>
+                        <span className="mt-2 inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                          {order.status.replace(/_/g, " ")}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
 
@@ -156,7 +267,7 @@ const Dashboard: NextPageWithMeta = () => {
                 <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
                   Past Transactions
                 </p>
-                <p className="text-2xl font-semibold text-navy">Last 3</p>
+                <p className="text-2xl font-semibold text-navy">Recent</p>
               </div>
             </div>
             <div className="mt-6 overflow-x-auto">
@@ -171,24 +282,38 @@ const Dashboard: NextPageWithMeta = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {mockTransactions.map((tx) => (
-                    <tr key={tx.id}>
-                      <td className="py-3">
-                        <p className="font-semibold text-navy">{tx.client}</p>
-                        <p className="text-xs text-slate-400">{tx.id}</p>
-                      </td>
-                      <td className="py-3 text-slate-600">{tx.service}</td>
-                      <td className="py-3 font-semibold text-tangerine">
-                        {tx.amount}
-                      </td>
-                      <td className="py-3 text-slate-600">{tx.date}</td>
-                      <td className="py-3">
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                          {tx.method}
-                        </span>
+                  {isLoading ? (
+                    <tr>
+                      <td className="py-4 text-center text-sm text-slate-500" colSpan={5}>
+                        Loading transactions…
                       </td>
                     </tr>
-                  ))}
+                  ) : (dashboardData?.recentTransactions.length ?? 0) === 0 ? (
+                    <tr>
+                      <td className="py-4 text-center text-sm text-slate-500" colSpan={5}>
+                        No recent transactions found.
+                      </td>
+                    </tr>
+                  ) : (
+                    dashboardData?.recentTransactions.map((tx) => (
+                      <tr key={tx.id}>
+                        <td className="py-3">
+                          <p className="font-semibold text-navy">{tx.customerName}</p>
+                          <p className="text-xs text-slate-400">{tx.id}</p>
+                        </td>
+                        <td className="py-3 text-slate-600">{tx.method ?? "—"}</td>
+                        <td className="py-3 font-semibold text-tangerine">
+                          {currencyFormatter.format(tx.totalAmount)}
+                        </td>
+                        <td className="py-3 text-slate-600">{dateFormatter.format(new Date(tx.date))}</td>
+                        <td className="py-3">
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                            {tx.method ?? "N/A"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -205,9 +330,6 @@ const Dashboard: NextPageWithMeta = () => {
                 Branding & Contact Details
               </p>
             </div>
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Frontend only – awaiting backend hookup
-            </span>
           </div>
 
           <form className="mt-8 grid gap-6" onSubmit={handleProfileSubmit}>
@@ -215,23 +337,29 @@ const Dashboard: NextPageWithMeta = () => {
               <div>
                 <p className="text-sm font-semibold text-slate-600">Site Logo</p>
                 <div className="mt-3 flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 p-4 text-center">
-                  <img
-                    src={profile.logo}
-                    alt="Current logo"
-                    className="h-16 w-auto"
-                  />
-                  <button
-                    type="button"
-                    className="mt-3 rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                  >
-                    Upload mock file
-                  </button>
-                  <p className="mt-2 text-xs text-slate-400">
-                    File selection is disabled until backend storage is ready.
-                  </p>
+                  {trimmedLogo ? (
+                    <img src={logoPreviewSrc} alt="Current logo" className="h-16 w-auto" />
+                  ) : (
+                    <>
+                      <img src="/Kealee.png" alt="Default logo" className="h-16 w-auto" />
+                      <span className="mt-2 text-xs text-slate-400">
+                        Enter a public URL or project-relative path (e.g., Kealee.png)
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="grid gap-4">
+                <label className="grid gap-1 text-sm font-semibold text-slate-600">
+                  Logo URL
+                  <input
+                    type="text"
+                    value={profile.logoUrl ?? ""}
+                    onChange={(e) => handleProfileChange("logoUrl", e.target.value)}
+                    className="rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-ocean focus:outline-none focus:ring-1 focus:ring-ocean"
+                    placeholder="https://"
+                  />
+                </label>
                 <label className="grid gap-1 text-sm font-semibold text-slate-600">
                   Contact Email
                   <input
@@ -278,15 +406,11 @@ const Dashboard: NextPageWithMeta = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
-              <button type="submit" className="btn-primary">
-                Save mock changes
+              <button type="submit" className="btn-primary" disabled={isSavingProfile}>
+                {isSavingProfile ? "Saving…" : "Save Changes"}
               </button>
-              {saveMessage ? (
+              {saveMessage && (
                 <p className="text-sm font-semibold text-amber">{saveMessage}</p>
-              ) : (
-                <p className="text-sm text-slate-500">
-                  No backend connected – values reset on refresh.
-                </p>
               )}
             </div>
           </form>
@@ -300,5 +424,9 @@ Dashboard.meta = {
   title: "Admin Dashboard | Kealee",
   description: "Admin overview.",
 };
+
+export const getServerSideProps = withAdminGuard<DashboardProps>(async (_context, session) => ({
+  props: { session },
+}));
 
 export default Dashboard;

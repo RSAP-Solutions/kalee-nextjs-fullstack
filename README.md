@@ -2,9 +2,45 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install Dependencies
 
-testing
+```bash
+npm install
+```
+
+### 2. Set Up Database Environment Variables
+
+Create a `.env.local` file in the root directory with your PostgreSQL database credentials:
+
+```env
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USER=your_database_user
+DATABASE_PASSWORD=your_database_password
+DATABASE_NAME=your_database_name
+DATABASE_SSL=false
+NODE_ENV=development
+```
+
+**Important:** Replace the placeholder values with your actual PostgreSQL credentials.
+
+### 3. Run Database Migrations
+
+After setting up your `.env.local` file, run the migrations to create the database tables:
+
+```bash
+npm run db:migrate
+```
+
+### 4. (Optional) Verify Database Connection
+
+Test your database connection:
+
+```bash
+npm run db:check
+```
+
+### 5. Start Development Server
 
 ```bash
 npm run dev

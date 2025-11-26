@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/router";
 import { Bars3Icon, XMarkIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import { ShoppingCart } from "lucide-react";
 import { useCartCount } from "@/hooks/useCartCount";
+import { useSiteProfile } from "@/context/SiteProfileContext";
+import { formatPhoneHref } from "@/types/siteProfile";
 
 type NavLink = {
   label: string;
@@ -39,8 +40,9 @@ const primaryLinks: NavLink[] = [
     ],
   },
   { label: "Financing", href: "/financing" },
+  { label: "Products", href: "/products" },
   { label: "Gallery", href: "/gallery" },
-  { label: "Blog", href: "/blog" },
+  { label: "Blog", href: "/blog-listing" },
   { label: "FAQ", href: "/faq" },
   // { label: "Contact", href: "/contact" },
 ];
@@ -50,13 +52,23 @@ const mobileCTA = [
   { label: "Financing Options", href: "/financing" },
 ];
 
-const phoneNumber = "(443) 852-9890";
-
 export default function Header() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const cartCount = useCartCount();
+  const { logoUrl, phone } = useSiteProfile();
+
+  const logoSrc = useMemo(() => {
+    const raw = (logoUrl ?? "").trim();
+    if (!raw) return "/Kealee.png";
+    if (raw.startsWith("http")) return raw;
+    if (raw.startsWith("/")) return raw;
+    return `/${raw.replace(/^[\/]+/, "")}`;
+  }, [logoUrl]);
+
+  const phoneLabel = phone?.trim() || "(443) 852-9890";
+  const phoneHref = formatPhoneHref(phoneLabel) ?? "tel:4438529890";
 
   const isActive = (href: string) => {
     if (href === "/") {
@@ -70,12 +82,10 @@ export default function Header() {
       <div className="mx-auto w-full max-w-content px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-6 py-4">
           <Link href="/" className="flex items-center gap-3">
-            <Image
-              src="/Kealee.png"
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={logoSrc}
               alt="Kealee Construction"
-              width={180}
-              height={48}
-              priority
               className="h-12 w-auto"
             />
             <span className="sr-only">Kealee Construction</span>
@@ -132,6 +142,13 @@ export default function Header() {
               })}
             </ul>
             <div className="flex items-center gap-4">
+              <a
+                href={phoneHref}
+                className="flex items-center gap-2 rounded-md border border-white/20 px-3 py-2 text-sm font-semibold text-white transition-colors hover:border-white/40 hover:bg-white/10"
+              >
+                <PhoneIcon className="h-4 w-4" />
+                <span>{phoneLabel}</span>
+              </a>
               <Link href="/store" className="btn-secondary whitespace-nowrap">
                 Store Front
               </Link>
@@ -219,6 +236,14 @@ export default function Header() {
               })}
             </div>
             <div className="space-y-3 border-t border-white/10 pt-6">
+              <a
+                href={phoneHref}
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 rounded-lg bg-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/15"
+              >
+                <PhoneIcon className="h-5 w-5" />
+                <span>{phoneLabel}</span>
+              </a>
               {mobileCTA.map((cta) => (
                 <Link
                   key={cta.href}

@@ -30,6 +30,22 @@ body {
   min-height: 100vh;
 }
 
+.modal-pop {
+  animation: modal-pop 200ms ease-out;
+  transform-origin: center;
+}
+
+@keyframes modal-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 main {
   min-height: 60vh;
 }
