@@ -91,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       status: order.status,
       totalAmount: Number(order.totalAmount ?? 0),
       updatedAt: order.updatedAt?.toISOString?.() ?? new Date().toISOString(),
-      headlineItem: order.orderItems?.[0]?.productTitle ?? "Pending assignment",
+      headlineItem: order.orderItems?.[0]?.productName ?? "Pending assignment",
     }));
 
     const recentTransactionsData = recentTransactions.map((order) => ({

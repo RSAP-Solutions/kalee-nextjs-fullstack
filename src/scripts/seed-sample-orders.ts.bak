@@ -1,7 +1,8 @@
 import "reflect-metadata";
 import { randomUUID } from "crypto";
 import { getCategoryRepository, getOrderRepository, getProductRepository } from "@/server/db/client";
-import { OrderStatus } from "@/server/db/entities/Order";
+import { Order, OrderStatus } from "@/server/db/entities/Order";
+import type { OrderItem } from "@/server/db/entities/OrderItem";
 
 async function seed() {
   const categoryRepo = await getCategoryRepository();
@@ -62,10 +63,11 @@ async function seed() {
       orderItems: [
         {
           product: solarKit,
-          productTitle: solarKit.title,
-          unitPrice: solarKit.price,
+          productName: solarKit.title,
+          productSlug: solarKit.slug,
+          productImage: solarKit.imageUrl || null,
+          price: solarKit.price.toString(),
           quantity: 1,
-          totalPrice: solarKit.price,
         },
       ],
     }),
@@ -86,10 +88,11 @@ async function seed() {
       orderItems: [
         {
           product: thermostat,
-          productTitle: thermostat.title,
-          unitPrice: thermostat.price,
+          productName: thermostat.title,
+          productSlug: thermostat.slug,
+          productImage: thermostat.imageUrl || null,
+          price: thermostat.price.toString(),
           quantity: 2,
-          totalPrice: thermostat.price * 2,
         },
       ],
     }),
@@ -109,17 +112,19 @@ async function seed() {
       orderItems: [
         {
           product: solarKit,
-          productTitle: solarKit.title,
-          unitPrice: solarKit.price,
+          productName: solarKit.title,
+          productSlug: solarKit.slug,
+          productImage: solarKit.imageUrl || null,
+          price: solarKit.price.toString(),
           quantity: 1,
-          totalPrice: solarKit.price,
         },
         {
           product: thermostat,
-          productTitle: thermostat.title,
-          unitPrice: thermostat.price,
+          productName: thermostat.title,
+          productSlug: thermostat.slug,
+          productImage: thermostat.imageUrl || null,
+          price: thermostat.price.toString(),
           quantity: 1,
-          totalPrice: thermostat.price,
         },
       ],
     }),
