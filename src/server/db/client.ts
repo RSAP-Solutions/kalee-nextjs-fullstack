@@ -26,15 +26,23 @@ const sslConfig = () => {
 };
 
 export const getDataSource = async () => {
-  // Debug: Log all environment variables (mask sensitive data)
-  console.log("[getDataSource] Environment check:");
-  console.log("- DATABASE_HOST:", process.env.DATABASE_HOST ? "SET" : "MISSING");
-  console.log("- DATABASE_USER:", process.env.DATABASE_USER ? "SET" : "MISSING");
-  console.log("- DATABASE_PASSWORD:", process.env.DATABASE_PASSWORD ? "SET" : "MISSING");
-  console.log("- DATABASE_NAME:", process.env.DATABASE_NAME ? "SET" : "MISSING");
-  console.log("- DATABASE_PORT:", process.env.DATABASE_PORT || "5432 (default)");
-  console.log("- DATABASE_SSL:", process.env.DATABASE_SSL || "false (default)");
-  console.log("- NODE_ENV:", process.env.NODE_ENV || "development (default)");
+  // Debug: Log ALL environment variables to see what's available
+  console.log("[getDataSource] ALL ENV VARS DEBUG:");
+  console.log("DATABASE_HOST:", process.env.DATABASE_HOST ? "SET" : "MISSING");
+  console.log("DATABASE_USER:", process.env.DATABASE_USER ? "SET" : "MISSING");
+  console.log("DATABASE_PASSWORD:", process.env.DATABASE_PASSWORD ? "SET" : "MISSING");
+  console.log("DATABASE_NAME:", process.env.DATABASE_NAME ? "SET" : "MISSING");
+  console.log("DATABASE_PORT:", process.env.DATABASE_PORT || "5432 (default)");
+  console.log("DATABASE_SSL:", process.env.DATABASE_SSL || "false (default)");
+  console.log("NODE_ENV:", process.env.NODE_ENV || "development (default)");
+  
+  // Debug: Log ALL process.env keys to see what Netlify is actually providing
+  console.log("[getDataSource] ALL AVAILABLE ENV KEYS:", Object.keys(process.env).filter(key => key.includes('DATABASE') || key.includes('AWS')));
+  
+  // Debug: Log a few known working env vars to check if env vars work at all
+  console.log("NODE_ENV exists:", !!process.env.NODE_ENV);
+  console.log("AWS_S3_BUCKET exists:", !!process.env.AWS_S3_BUCKET);
+  console.log("MY_AWS_REGION exists:", !!process.env.MY_AWS_REGION);
   
   // Validate env vars before trying to connect (lazy validation)
   const required = ["DATABASE_HOST", "DATABASE_USER", "DATABASE_PASSWORD", "DATABASE_NAME"];
