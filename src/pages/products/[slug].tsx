@@ -28,6 +28,34 @@ const placeholderImage =
   "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nODAwJyBoZWlnaHQ9JzQwMCcgZmlsbD0nI0VCREVGNycgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJz48cmVjdCB3aWR0aD0nODAwJyBoZWlnaHQ9JzQwMCcgcng9JzE2Jy8+PHRleHQgeD0nNDAwJyB5PScyMDAnIGZvbnQtc2l6ZT0nNDAnIGZpbGw9JyM4MDg4OTAnIHRleHQtYW5jaG9yPSdtaWRkbGcnPlByb2R1Y3Q8L3RleHQ+PC9zdmc+";
 
 const ProductPage: NextPageWithMeta<ProductPageProps> = ({ product }) => {
+  const galleryImages = useMemo(() => {
+    if (!product) {
+      return [placeholderImage];
+    }
+
+    const unique = new Set<string>();
+    product.imageUrls.forEach((url) => {
+      if (url) unique.add(url);
+    });
+
+    if (product.imageUrl) {
+      unique.add(product.imageUrl);
+    }
+
+    const images = Array.from(unique);
+    return images.length > 0 ? images : [placeholderImage];
+  }, [product]);
+
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [galleryImages]);
+
+  const displayImage = galleryImages[activeIndex] ?? placeholderImage;
+
+  const hasMultipleImages = galleryImages.length > 1;
+
   if (!product) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -41,34 +69,6 @@ const ProductPage: NextPageWithMeta<ProductPageProps> = ({ product }) => {
       </div>
     );
   }
-
-  const galleryImages = useMemo(() => {
-    const sources: string[] = [];
-
-    if (product.imageUrls.length > 0) {
-      product.imageUrls.forEach((url) => {
-        if (url && !sources.includes(url)) {
-          sources.push(url);
-        }
-      });
-    }
-
-    if (product.imageUrl && !sources.includes(product.imageUrl)) {
-      sources.push(product.imageUrl);
-    }
-
-    return sources.length > 0 ? sources : [placeholderImage];
-  }, [product.imageUrl, product.imageUrls]);
-
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [galleryImages]);
-
-  const displayImage = galleryImages[activeIndex] ?? placeholderImage;
-
-  const hasMultipleImages = galleryImages.length > 1;
 
   const handlePrev = () => {
     setActiveIndex((prev) => (prev === 0 ? galleryImages.length - 1 : prev - 1));

@@ -132,7 +132,7 @@ const Store: NextPageWithMeta = () => {
 
   const filteredProducts = useMemo(() => {
     const activeCategory = selectedCategory === "all" ? null : selectedCategory;
-    let filtered = activeCategory
+    const filtered = activeCategory
       ? products.filter((product) => product.category?.slug === activeCategory)
       : products;
 

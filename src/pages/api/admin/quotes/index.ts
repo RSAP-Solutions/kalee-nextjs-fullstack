@@ -2,8 +2,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdminApi } from "@/server/auth/adminSession";
 import { getQuoteRequestRepository } from "@/server/db/client";
 import type { QuoteRequestResponse, QuoteRequestStatus } from "@/types/quote";
+import type { QuoteRequest } from "@/server/db/entities/QuoteRequest";
 
-const serializeQuote = (item: any): QuoteRequestResponse => ({
+const ALLOWED_STATUSES: QuoteRequestStatus[] = ["new", "in_review", "scheduled", "closed"];
+
+const serializeQuote = (item: QuoteRequest): QuoteRequestResponse => ({
   id: item.id,
   source: item.source,
   status: item.status,
@@ -34,9 +37,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "GET") {
     const { status } = req.query;
-    const where = typeof status === "string" && status.length > 0 ? { status } : {};
+    const statusFilter =
+      typeof status === "string" && ALLOWED_STATUSES.includes(status as QuoteRequestStatus)
+        ? (status as QuoteRequestStatus)
+        : undefined;
+
     const items = await repo.find({
-      where,
+      where: statusFilter ? { status: statusFilter } : undefined,
       order: { createdAt: "DESC" },
       take: 200,
     });
@@ -55,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Quote request not found" });
     }
 
-    if (status && ["new", "in_review", "scheduled", "closed"].includes(status)) {
+    if (status && ALLOWED_STATUSES.includes(status)) {
       existing.status = status;
     }
 

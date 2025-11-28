@@ -5,8 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-
-export type QuoteRequestSource = "quote_form" | "contact_form";
+import type { QuoteRequestSource, QuoteRequestStatus } from "@/types/quote";
 
 @Entity("quote_requests")
 export class QuoteRequest {
@@ -17,7 +16,7 @@ export class QuoteRequest {
   source!: QuoteRequestSource;
 
   @Column({ name: "status", type: "varchar", length: 32, default: "new" })
-  status!: string;
+  status!: QuoteRequestStatus;
 
   @Column({ name: "first_name", type: "varchar", length: 120, nullable: true })
   firstName!: string | null;
