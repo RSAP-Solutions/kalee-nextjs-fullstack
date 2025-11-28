@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getCategoryRepository } from "@/server/db/client";
+import { getS3PublicUrl } from "@/server/services/s3";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Add top-level error handler
@@ -24,15 +25,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       res.status(200).json(
-        categories.map((category) => ({
-          id: category.id,
-          name: category.name,
-          slug: category.slug,
-          description: category.description,
-          productCount: (category as { products?: unknown[] }).products?.length ?? 0,
-          createdAt: category.createdAt,
-          updatedAt: category.updatedAt,
-        }))
+        categories.map((category) => {
+          const imageKey = category.imageUrl?.trim() || null;
+          let imageUrlPreview: string | null = null;
+
+          if (imageKey) {
+            try {
+              imageUrlPreview = getS3PublicUrl(imageKey);
+            } catch (error) {
+              console.error("[categories.get] Error processing imageUrl", imageKey, error);
+              imageUrlPreview = imageKey;
+            }
+          }
+
+          return {
+            id: category.id,
+            name: category.name,
+            slug: category.slug,
+            description: category.description,
+            productCount: (category as { products?: unknown[] }).products?.length ?? 0,
+            imageUrl: imageKey,
+            imageUrlPreview,
+            createdAt: category.createdAt?.toISOString?.() ?? category.createdAt,
+            updatedAt: category.updatedAt?.toISOString?.() ?? category.updatedAt,
+          };
+        })
       );
     } catch (error: unknown) {
       console.error("[categories.get] Full error:", error);

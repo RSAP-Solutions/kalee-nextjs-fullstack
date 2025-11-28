@@ -212,11 +212,11 @@ const Home: NextPageWithMeta = () => {
               Licensed General Contractor • DMV Region
             </span>
             <div className="stack">
-              <h1 className="section-title text-white">
+              <h1 className="section-title !text-white">
                 Professional Construction Services & Home Renovations
               </h1>
-              <p className="text-lg font-semibold text-amber">Speed Meets Precision</p>
-              <p className="prose-responsive text-white/85">
+              <p className="text-lg font-semibold !text-white">Speed Meets Precision</p>
+              <p className="prose-responsive !text-white">
                 Kealee Construction delivers quality additions, renovations, and custom builds across
                 Washington DC, Prince George County, Montgomery County, Southern Maryland, Northern
                 Virginia, and Baltimore. 24/7 emergency response backed by licensed experts.
@@ -291,7 +291,7 @@ const Home: NextPageWithMeta = () => {
                 className={`relative flex h-full flex-col rounded-[var(--radius-card)] bg-white p-8 shadow-card transition-transform duration-200 hover:-translate-y-1 ${tier.highlighted ? "border-2 border-amber ring-2 ring-amber/30" : "border border-slate-100"}`}
               >
                 {tier.highlighted && (
-                  <span className="absolute -top-4 right-6 rounded-full bg-amber px-4 py-1 text-xs font-semibold uppercase text-navy">
+                  <span className="absolute -top-4 right-6 inline-flex w-fit rounded-full bg-amber px-4 py-1 text-xs font-semibold uppercase text-navy">
                     Most Popular
                   </span>
                 )}
@@ -379,8 +379,8 @@ const Home: NextPageWithMeta = () => {
       <section id="contact" className="gradient-hero relative -mx-4 rounded-3xl px-4 py-16 text-white sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div className="page-shell grid gap-10 lg:grid-cols-[1fr,1.1fr]">
           <div className="stack">
-            <h2 className="section-title text-white">Ready to Start Your Renovation?</h2>
-            <p className="prose-responsive text-white/80">
+            <h2 className="section-title !text-white">Ready to Start Your Renovation?</h2>
+            <p className="prose-responsive !text-white">
               Request a consultation and receive a tailored project roadmap. Serving Washington DC, Maryland,
               and Northern Virginia with rapid response and transparent estimates.
             </p>
@@ -450,7 +450,7 @@ const Home: NextPageWithMeta = () => {
                     id="consultation"
                     name="consultation"
                     required
-                    className="rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-ocean focus:outline-none focus:ring-1 focus:ring-ocean"
+                    className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-ocean focus:outline-none focus:ring-1 focus:ring-ocean"
                   >
                     <option value="">Select Consultation Package...</option>
                     {consultationTiers.map((tier) => (
@@ -477,7 +477,7 @@ const Home: NextPageWithMeta = () => {
                     id="service"
                     name="service"
                     required
-                    className="rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-ocean focus:outline-none focus:ring-1 focus:ring-ocean"
+                    className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-ocean focus:outline-none focus:ring-1 focus:ring-ocean"
                   >
                     <option value="">Select a Service...</option>
                     {serviceOptions.map((option) => (
@@ -498,7 +498,7 @@ const Home: NextPageWithMeta = () => {
                     id="location"
                     name="location"
                     required
-                    className="rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-ocean focus:outline-none focus:ring-1 focus:ring-ocean"
+                    className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-ocean focus:outline-none focus:ring-1 focus:ring-ocean"
                   >
                     <option value="">Select Location...</option>
                     {locationOptions.map((option) => (
@@ -521,7 +521,7 @@ const Home: NextPageWithMeta = () => {
                   <select
                     id="budget"
                     name="budget"
-                    className="rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-ocean focus:outline-none focus:ring-1 focus:ring-ocean"
+                    className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-ocean focus:outline-none focus:ring-1 focus:ring-ocean"
                   >
                     <option value="">Select Budget Range...</option>
                     {budgetOptions.map((option) => (

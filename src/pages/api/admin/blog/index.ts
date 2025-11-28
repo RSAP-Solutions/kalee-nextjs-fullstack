@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdminApi } from "@/server/auth/adminSession";
 import { getBlogItemRepository } from "@/server/db/client";
 import { BlogItemStatus } from "@/server/db/entities/BlogItem";
+import { getS3PublicUrl } from "@/server/services/s3";
 import type { BlogItemResponse, BlogItemPayload } from "@/types/blog";
 
 export default async function handler(
@@ -26,19 +27,34 @@ export default async function handler(
         order: { createdAt: "DESC" },
       });
 
-      const response: BlogItemResponse[] = items.map((item) => ({
-        id: item.id,
-        title: item.title,
-        content: item.content,
-        excerpt: item.excerpt ?? null,
-        coverImage: item.coverImage ?? null,
-        author: item.author ?? null,
-        status: item.status,
-        tags: item.tags ?? [],
-        publishedAt: item.publishedAt?.toISOString() ?? null,
-        createdAt: item.createdAt.toISOString(),
-        updatedAt: item.updatedAt.toISOString(),
-      }));
+      const response: BlogItemResponse[] = items.map((item) => {
+        const coverKey = item.coverImage?.trim() || null;
+        let coverImagePreview: string | null = null;
+
+        if (coverKey) {
+          try {
+            coverImagePreview = getS3PublicUrl(coverKey);
+          } catch (error) {
+            console.error("[admin.blog] Error processing cover image", coverKey, error);
+            coverImagePreview = coverKey;
+          }
+        }
+
+        return {
+          id: item.id,
+          title: item.title,
+          content: item.content,
+          excerpt: item.excerpt ?? null,
+          coverImage: coverKey,
+          coverImagePreview,
+          author: item.author ?? null,
+          status: item.status,
+          tags: item.tags ?? [],
+          publishedAt: item.publishedAt?.toISOString() ?? null,
+          createdAt: item.createdAt.toISOString(),
+          updatedAt: item.updatedAt.toISOString(),
+        };
+      });
 
       return res.status(200).json(response);
     }
@@ -55,11 +71,13 @@ export default async function handler(
       }
 
       console.log("[admin.blog] Creating blog item...");
+      const coverKey = payload.coverImage === null ? null : payload.coverImage?.trim() || null;
+
       const blogItem = repo.create({
         title: payload.title.trim(),
         content: payload.content.trim(),
         excerpt: payload.excerpt?.trim() || null,
-        coverImage: payload.coverImage?.trim() || null,
+        coverImage: coverKey,
         author: payload.author?.trim() || null,
         status: payload.status,
         tags: payload.tags || [],
@@ -75,12 +93,23 @@ export default async function handler(
       const saved = await repo.save(blogItem);
       console.log("[admin.blog] Blog item saved successfully:", saved.id);
 
+      let coverImagePreview: string | null = null;
+      if (saved.coverImage) {
+        try {
+          coverImagePreview = getS3PublicUrl(saved.coverImage);
+        } catch (error) {
+          console.error("[admin.blog] Error processing created cover image", saved.coverImage, error);
+          coverImagePreview = saved.coverImage;
+        }
+      }
+
       const response: BlogItemResponse = {
         id: saved.id,
         title: saved.title,
         content: saved.content,
         excerpt: saved.excerpt,
         coverImage: saved.coverImage,
+        coverImagePreview,
         author: saved.author,
         status: saved.status,
         tags: saved.tags,
@@ -108,11 +137,13 @@ export default async function handler(
         return res.status(404).json({ error: "Blog post not found" });
       }
 
+      const coverKey = payload.coverImage === null ? null : payload.coverImage?.trim() || existing.coverImage || null;
+
       repo.merge(existing, {
         title: payload.title.trim(),
         content: payload.content.trim(),
         excerpt: payload.excerpt?.trim() || null,
-        coverImage: payload.coverImage?.trim() || null,
+        coverImage: coverKey,
         author: payload.author?.trim() || null,
         status: payload.status,
         tags: payload.tags || [],
@@ -126,12 +157,23 @@ export default async function handler(
 
       const saved = await repo.save(existing);
 
+      let coverImagePreview: string | null = null;
+      if (saved.coverImage) {
+        try {
+          coverImagePreview = getS3PublicUrl(saved.coverImage);
+        } catch (error) {
+          console.error("[admin.blog] Error processing updated cover image", saved.coverImage, error);
+          coverImagePreview = saved.coverImage;
+        }
+      }
+
       const response: BlogItemResponse = {
         id: saved.id,
         title: saved.title,
         content: saved.content,
         excerpt: saved.excerpt,
         coverImage: saved.coverImage,
+        coverImagePreview,
         author: saved.author,
         status: saved.status,
         tags: saved.tags,

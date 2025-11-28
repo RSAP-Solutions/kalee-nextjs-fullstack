@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { AdminTable, Column } from "@/components/admin/Table";
 import type { NextPageWithMeta } from "@/pages/_app";
@@ -41,6 +42,24 @@ const columns: Column<TableRow>[] = [
   { header: "Updated", accessor: "updatedAt" },
 ];
 
+const normalizeTags = (tags: unknown): string[] => {
+  if (Array.isArray(tags)) {
+    return tags
+      .map((tag) => (typeof tag === "string" ? tag : String(tag)))
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof tags === "string") {
+    return tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
 const mapToRow = (item: BlogItemResponse): TableRow => ({
   id: item.id,
   title: item.title,
@@ -51,12 +70,17 @@ const mapToRow = (item: BlogItemResponse): TableRow => ({
 
 const BlogsAdmin: NextPageWithMeta = () => {
   const [items, setItems] = useState<BlogItemResponse[]>([]);
-  const [formState, setFormState] = useState<FormState>(emptyForm);
+  const [formState, setFormState] = useState<FormState>(() => ({ ...emptyForm }));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [existingCoverPreview, setExistingCoverPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [shouldRemoveCover, setShouldRemoveCover] = useState(false);
 
   const fetchItems = useCallback(async () => {
     setIsLoading(true);
@@ -70,8 +94,12 @@ const BlogsAdmin: NextPageWithMeta = () => {
         throw new Error((data as { error?: string })?.error ?? "Failed to load blog posts");
       }
 
-      const data = (await response.json()) as BlogItemResponse[];
-      setItems(data);
+      const data = (await response.json()) as Array<BlogItemResponse & { tags?: unknown }>;
+      const normalized = data.map((item) => ({
+        ...item,
+        tags: normalizeTags(item.tags),
+      }));
+      setItems(normalized);
     } catch (err: unknown) {
       console.error("[admin.blog.fetch]", err);
       const message = err instanceof Error ? err.message : "Failed to load blog posts";
@@ -86,8 +114,12 @@ const BlogsAdmin: NextPageWithMeta = () => {
   }, [fetchItems]);
 
   const openCreateModal = () => {
-    console.log("Opening create modal");
-    setFormState(emptyForm);
+    setFormState(() => ({ ...emptyForm }));
+    setCoverFile(null);
+    setCoverPreview(null);
+    setExistingCoverPreview(null);
+    setShouldRemoveCover(false);
+    setIsUploading(false);
     setIsModalOpen(true);
   };
 
@@ -99,25 +131,94 @@ const BlogsAdmin: NextPageWithMeta = () => {
       excerpt: item.excerpt ?? "",
       coverImage: item.coverImage ?? "",
       author: item.author ?? "",
-      tags: item.tags.join(", "),
+      tags: normalizeTags(item.tags).join(", "),
       status: item.status,
     });
+    setCoverFile(null);
+    setCoverPreview(null);
+    setExistingCoverPreview(item.coverImagePreview ?? null);
+    setShouldRemoveCover(false);
+    setIsUploading(false);
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setFormState(() => ({ ...emptyForm }));
+    setCoverFile(null);
+    setCoverPreview(null);
+    setExistingCoverPreview(null);
+    setShouldRemoveCover(false);
+    setIsUploading(false);
   };
 
   const handleInputChange = (key: keyof FormState, value: string | BlogItemStatus) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
   };
 
-  const buildPayload = (): BlogItemPayload => ({
+  const handleCoverChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file.");
+      return;
+    }
+
+    setError(null);
+    setCoverFile(file);
+    setShouldRemoveCover(false);
+    setExistingCoverPreview(null);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCoverPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleRemoveCover = useCallback(() => {
+    setCoverFile(null);
+    setCoverPreview(null);
+    setExistingCoverPreview(null);
+    setShouldRemoveCover(true);
+    setFormState((prev) => ({ ...prev, coverImage: "" }));
+  }, []);
+
+  const uploadCoverToS3 = useCallback(async (file: File): Promise<string> => {
+    const timestamp = Date.now();
+    const sanitized = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const s3Key = `blogs/blog-${timestamp}-${sanitized}`;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("key", s3Key);
+    formData.append("contentType", file.type);
+
+    const response = await fetch("/api/admin/s3/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[admin.blog] Cover upload error:", errorText);
+      throw new Error(errorText || `Upload failed with status ${response.status}`);
+    }
+
+    const data: { key?: string } = await response.json();
+    return data?.key ?? s3Key;
+  }, []);
+
+  const buildPayload = (coverKey: string | null): BlogItemPayload => ({
     title: formState.title.trim(),
     content: formState.content.trim(),
     excerpt: formState.excerpt.trim() || undefined,
-    coverImage: formState.coverImage.trim() || undefined,
+    coverImage: coverKey,
     author: formState.author.trim() || undefined,
     tags: formState.tags
       .split(",")
@@ -134,8 +235,29 @@ const BlogsAdmin: NextPageWithMeta = () => {
     event.preventDefault();
     setIsSaving(true);
     setError(null);
+    let coverKey: string | null = formState.coverImage.trim() || null;
+
+    if (shouldRemoveCover) {
+      coverKey = null;
+    }
+
+    if (coverFile) {
+      try {
+        setIsUploading(true);
+        coverKey = await uploadCoverToS3(coverFile);
+      } catch (uploadError) {
+        console.error("[admin.blog] Cover upload failed", uploadError);
+        setError("Failed to upload cover image. Please try again.");
+        setIsSaving(false);
+        setIsUploading(false);
+        return;
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
     try {
-      const payload = buildPayload();
+      const payload = buildPayload(coverKey);
       const isEdit = Boolean(formState.id);
 
       const response = await fetch("/api/admin/blog", {
@@ -158,6 +280,7 @@ const BlogsAdmin: NextPageWithMeta = () => {
       setError(message);
     } finally {
       setIsSaving(false);
+      setIsUploading(false);
     }
   };
 
@@ -282,19 +405,66 @@ const BlogsAdmin: NextPageWithMeta = () => {
                 />
               </label>
 
-              <label className="grid gap-2 text-sm font-semibold text-navy">
-                Cover image URL
-                <input
-                  type="url"
-                  value={formState.coverImage}
-                  onChange={(event) => handleInputChange("coverImage", event.target.value)}
-                  className="rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-ocean focus:outline-none focus:ring-1 focus:ring-ocean"
-                  placeholder="https://"
-                />
-                <p className="text-xs text-slate-500">
-                  Paste a direct image URL (e.g., from Unsplash, Pexels, or elsewhere).
-                </p>
-              </label>
+              <div className="grid gap-2 text-sm font-semibold text-navy">
+                <span>Cover image</span>
+                <div className="space-y-4">
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCoverChange}
+                      disabled={isUploading}
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                    />
+                    <div className="w-full rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition-colors hover:bg-slate-100">
+                      <div className="text-slate-600">
+                        <svg
+                          className="mx-auto h-12 w-12 text-slate-400"
+                          stroke="currentColor"
+                          fill="none"
+                          viewBox="0 0 48 48"
+                        >
+                          <path
+                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <p className="mt-2 text-sm font-medium">
+                          {isUploading ? "Uploading…" : "Click or drag to upload cover image"}
+                        </p>
+                        <p className="text-xs text-slate-500">PNG, JPG, or WEBP recommended</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {(coverPreview || existingCoverPreview) && (
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                      <div className="relative aspect-video w-full">
+                        <Image
+                          src={coverPreview || existingCoverPreview || ""}
+                          alt="Cover image preview"
+                          fill
+                          className="object-cover"
+                          sizes="(min-width: 1024px) 600px, 100vw"
+                          unoptimized
+                        />
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-500">
+                        <span>{coverFile?.name ?? "Existing image"}</span>
+                        <button
+                          type="button"
+                          onClick={handleRemoveCover}
+                          className="text-xs font-semibold text-red-500 hover:text-red-600"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               <label className="grid gap-2 text-sm font-semibold text-navy">
                 Content
@@ -333,8 +503,14 @@ const BlogsAdmin: NextPageWithMeta = () => {
               </div>
 
               <div className="mt-4 flex flex-wrap gap-3">
-                <button type="submit" className="btn-primary" disabled={isSaving}>
-                  {isSaving ? "Saving…" : formState.id ? "Save changes" : "Create post"}
+                <button type="submit" className="btn-primary" disabled={isSaving || isUploading}>
+                  {isSaving || isUploading
+                    ? isUploading
+                      ? "Uploading image…"
+                      : "Saving…"
+                    : formState.id
+                    ? "Save changes"
+                    : "Create post"}
                 </button>
                 <button type="button" className="btn-secondary" onClick={closeModal}>
                   Cancel

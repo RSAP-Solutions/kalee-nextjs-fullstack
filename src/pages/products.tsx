@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { getS3PublicUrl } from "@/server/services/s3";
 import type { NextPageWithMeta } from "@/pages/_app";
 
 const placeholderImage =
@@ -13,6 +14,7 @@ type ProductResponse = {
   price: number;
   description: string;
   imageUrl: string | null;
+  imageUrls: string[];
   inStock: boolean;
   category: { id: string; name: string; slug: string } | null;
   createdAt: string;
@@ -23,13 +25,45 @@ type ProductCardProps = {
   product: ProductResponse;
 };
 
-const ProductCard = ({ product }: ProductCardProps) => (
+const ProductCard = ({ product }: ProductCardProps) => {
+  // Handle both S3 images and external URLs
+  const displayImage = (() => {
+    // First try imageUrls array (for uploaded S3 images)
+    if (product.imageUrls && product.imageUrls.length > 0) {
+      const firstImage = product.imageUrls[0];
+      // If it's an S3 key, convert to proxy URL
+      if (firstImage.startsWith('products/') || !firstImage.startsWith('http')) {
+        const proxyUrl = getS3PublicUrl(firstImage);
+        return proxyUrl || placeholderImage;
+      }
+      // If it's already an external URL, use as-is
+      return firstImage;
+    }
+    
+    // Fallback to imageUrl (for single images or external URLs)
+    if (product.imageUrl) {
+      // If it's an S3 key, convert to proxy URL
+      if (product.imageUrl.startsWith('products/') || !product.imageUrl.startsWith('http')) {
+        const proxyUrl = getS3PublicUrl(product.imageUrl);
+        return proxyUrl || placeholderImage;
+      }
+      // If it's already an external URL, use as-is
+      return product.imageUrl;
+    }
+    
+    // Final fallback to placeholder
+    return placeholderImage;
+  })();
+  
+  console.log('[ProductCard] Displaying image:', displayImage);
+  
+  return (
   <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card transition-transform duration-200 hover:-translate-y-1 hover:shadow-xl">
     <Link href={`/products/${product.slug}`}>
       <div className="block cursor-pointer">
         <div className="relative h-48 w-full bg-slate-100">
           <Image
-            src={product.imageUrl ?? placeholderImage}
+            src={displayImage}
             alt={product.title}
             fill
             className="object-cover"
@@ -76,7 +110,8 @@ const ProductCard = ({ product }: ProductCardProps) => (
       </div>
     </Link>
   </article>
-);
+  );
+};
 
 const ProductsPage: NextPageWithMeta = () => {
   const [products, setProducts] = useState<ProductResponse[]>([]);

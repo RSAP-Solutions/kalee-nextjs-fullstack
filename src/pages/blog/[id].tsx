@@ -1,9 +1,38 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Image from "next/image";
 import type { NextPageWithMeta } from "@/pages/_app";
 import type { BlogItemResponse } from "@/types/blog";
+
+const placeholderImage =
+  "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nNDAwJyBoZWlnaHQ9JzI1MCcgZmlsbD0nI0VCREVGNycgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJz48cmVjdCB3aWR0aD0nNDAwJyBoZWlnaHQ9JzI1MCcgcng9JzI0Jy8+PHRleHQgeD0nMjAwJyB5PScxMjUnIGZvbnQtc2l6ZT0nNDAnIGZpbGw9JyM4MDg4OTAnIHRleHQtYW5jaG9yPSdtaWRkbGUnPkJsb2cgaW1hZ2U8L3RleHQ+PC9zdmc+";
+
+const resolveProxyUrl = (value: string | null | undefined): string | null => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith("/api/images/")) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    try {
+      const url = new URL(trimmed);
+      if (url.hostname.includes("amazonaws.com") || url.hostname.includes("s3.")) {
+        const key = url.pathname.replace(/^\/+/, "");
+        return `/api/images/${key}`;
+      }
+      return trimmed;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  const key = trimmed.replace(/^\/+/, "");
+  return `/api/images/${key}`;
+};
 
 const BlogPostPage: NextPageWithMeta = () => {
   const router = useRouter();
@@ -11,6 +40,11 @@ const BlogPostPage: NextPageWithMeta = () => {
   const [post, setPost] = useState<BlogItemResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const coverSrc = useMemo(() => {
+    if (!post) return null;
+    return resolveProxyUrl(post.coverImagePreview ?? post.coverImage);
+  }, [post]);
 
   useEffect(() => {
     if (!id || typeof id !== "string") return;
@@ -71,11 +105,22 @@ const BlogPostPage: NextPageWithMeta = () => {
 
         <header className="mb-12">
           <div className="mb-8">
-            {post.coverImage && (
+            {coverSrc ? (
               <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-slate-100">
                 <Image
-                  src={post.coverImage}
+                  src={coverSrc}
                   alt={post.title}
+                  fill
+                  className="object-cover"
+                  sizes="(min-width: 1024px) 896px, 100vw"
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-slate-100">
+                <Image
+                  src={placeholderImage}
+                  alt="Placeholder image"
                   fill
                   className="object-cover"
                   sizes="(min-width: 1024px) 896px, 100vw"

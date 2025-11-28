@@ -1,14 +1,27 @@
 //comment//
 
+import { useEffect, useMemo, useState } from "react";
 import { getProductRepository } from "@/server/db/client";
-import type { Product } from "@/server/db/entities/Product";
+import { getS3PublicUrl } from "@/server/services/s3";
 import Image from "next/image";
 import Link from "next/link";
 import type { NextPageWithMeta } from "@/pages/_app";
 import { GetServerSideProps } from "next";
 
+type ProductForPage = {
+  id: string;
+  title: string;
+  slug: string;
+  price: number;
+  description: string;
+  imageUrl: string | null;
+  imageUrls: string[];
+  inStock: boolean;
+  category: { id: string; name: string; slug: string } | null;
+};
+
 type ProductPageProps = {
-  product: Product | null;
+  product: ProductForPage | null;
 };
 
 const placeholderImage =
@@ -29,21 +42,82 @@ const ProductPage: NextPageWithMeta<ProductPageProps> = ({ product }) => {
     );
   }
 
+  const galleryImages = useMemo(() => {
+    const sources: string[] = [];
+
+    if (product.imageUrls.length > 0) {
+      product.imageUrls.forEach((url) => {
+        if (url && !sources.includes(url)) {
+          sources.push(url);
+        }
+      });
+    }
+
+    if (product.imageUrl && !sources.includes(product.imageUrl)) {
+      sources.push(product.imageUrl);
+    }
+
+    return sources.length > 0 ? sources : [placeholderImage];
+  }, [product.imageUrl, product.imageUrls]);
+
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [galleryImages]);
+
+  const displayImage = galleryImages[activeIndex] ?? placeholderImage;
+
+  const hasMultipleImages = galleryImages.length > 1;
+
+  const handlePrev = () => {
+    setActiveIndex((prev) => (prev === 0 ? galleryImages.length - 1 : prev - 1));
+  };
+
+  const handleNext = () => {
+    setActiveIndex((prev) => (prev === galleryImages.length - 1 ? 0 : prev + 1));
+  };
+
   return (
     <div className="space-y-16 py-12 sm:py-16">
       <section className="px-4 sm:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-content flex-col gap-12">
           <div className="flex flex-col gap-6 lg:flex-row lg:gap-12">
-            <div className="lg:w-1/2">
+            <div className="lg:w-1/2 space-y-4">
               <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-slate-100">
                 <Image
-                  src={product.imageUrl ?? placeholderImage}
+                  key={displayImage}
+                  src={displayImage}
                   alt={product.title}
                   fill
-                  className="object-cover"
+                  className="object-cover transition-opacity duration-300"
                   sizes="(min-width: 1024px) 600px, 100vw"
                   unoptimized
                 />
+                {hasMultipleImages && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handlePrev}
+                      aria-label="Previous image"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-slate-700 shadow-md transition hover:bg-white"
+                    >
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M12.707 4.293a1 1 0 010 1.414L9.414 9l3.293 3.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNext}
+                      aria-label="Next image"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-slate-700 shadow-md transition hover:bg-white"
+                    >
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.293 4.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L10.586 9 7.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </>
+                )}
                 {!product.inStock && (
                   <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60">
                     <span className="rounded-lg bg-slate-800 px-4 py-2 text-lg font-semibold text-white">
@@ -52,6 +126,33 @@ const ProductPage: NextPageWithMeta<ProductPageProps> = ({ product }) => {
                   </div>
                 )}
               </div>
+
+              {hasMultipleImages && (
+                <div className="flex items-center justify-center gap-3">
+                  {galleryImages.map((image, index) => (
+                    <button
+                      key={image}
+                      type="button"
+                      onClick={() => setActiveIndex(index)}
+                      aria-label={`View image ${index + 1}`}
+                      className={`relative h-16 w-16 overflow-hidden rounded-xl border transition ${
+                        index === activeIndex
+                          ? "border-ocean shadow-lg"
+                          : "border-slate-200 hover:border-ocean/60"
+                      }`}
+                    >
+                      <Image
+                        src={image}
+                        alt={`${product.title} thumbnail ${index + 1}`}
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="lg:w-1/2">
@@ -192,9 +293,31 @@ export const getServerSideProps: GetServerSideProps<ProductPageProps> = async ({
       return { notFound: true };
     }
 
+    const mappedImageUrls = (product.imageUrls ?? [])
+      .map((url) => getS3PublicUrl(url) ?? url)
+      .filter((url): url is string => Boolean(url));
+
+    const normalized: ProductForPage = {
+      id: product.id,
+      title: product.title,
+      slug: product.slug,
+      price: Number(product.price),
+      description: product.description,
+      imageUrl: getS3PublicUrl(product.imageUrl) ?? product.imageUrl ?? null,
+      imageUrls: mappedImageUrls,
+      inStock: product.inStock,
+      category: product.category
+        ? {
+            id: product.category.id,
+            name: product.category.name,
+            slug: product.category.slug,
+          }
+        : null,
+    };
+
     return {
       props: {
-        product: JSON.parse(JSON.stringify(product)),
+        product: normalized,
       },
     };
   } catch (error) {

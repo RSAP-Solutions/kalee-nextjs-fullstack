@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdminApi } from "@/server/auth/adminSession";
 import { getProductRepository } from "@/server/db/client";
+import { getS3PublicUrl } from "@/server/services/s3";
 
 export default async function handler(
   req: NextApiRequest,
@@ -26,22 +27,37 @@ export default async function handler(
         order: { createdAt: "DESC" },
       });
 
-      const response = items.map((item) => ({
-        id: item.id,
-        title: item.title,
-        slug: item.slug,
-        price: item.price,
-        description: item.description,
-        imageUrl: item.imageUrl ?? null,
-        inStock: item.inStock,
-        category: item.category ? {
-          id: item.category.id,
-          name: item.category.name,
-          slug: item.category.slug,
-        } : null,
-        createdAt: item.createdAt.toISOString(),
-        updatedAt: item.updatedAt.toISOString(),
-      }));
+      const response = items.map((item) => {
+        try {
+          return {
+            id: item.id,
+            title: item.title,
+            slug: item.slug,
+            price: item.price,
+            description: item.description,
+            imageUrl: item.imageUrl ? getS3PublicUrl(item.imageUrl) : null,
+            imageUrls: (item.imageUrls ?? []).map(url => {
+              try {
+                return getS3PublicUrl(url);
+              } catch (error) {
+                console.error('[admin.products] Error processing image URL:', url, error);
+                return url; // fallback to original URL
+              }
+            }),
+            inStock: item.inStock,
+            category: item.category ? {
+              id: item.category.id,
+              name: item.category.name,
+              slug: item.category.slug,
+            } : null,
+            createdAt: item.createdAt.toISOString(),
+            updatedAt: item.updatedAt.toISOString(),
+          };
+        } catch (error) {
+          console.error('[admin.products] Error processing item:', item.id, error);
+          throw error;
+        }
+      });
 
       return res.status(200).json(response);
     }
@@ -62,6 +78,18 @@ export default async function handler(
         return res.status(400).json({ error: "Valid price is required" });
       }
 
+      // Validate imageUrls array (max 5 images)
+      if (payload.imageUrls && Array.isArray(payload.imageUrls)) {
+        if (payload.imageUrls.length > 5) {
+          console.log("[admin.products] Validation failed - too many images");
+          return res.status(400).json({ error: "Maximum 5 images allowed" });
+        }
+        if (!payload.imageUrls.every((url: string) => typeof url === "string")) {
+          console.log("[admin.products] Validation failed - invalid image URL format");
+          return res.status(400).json({ error: "All image URLs must be strings" });
+        }
+      }
+
       console.log("[admin.products] Creating product...");
       const product = repo.create({
         title: payload.title.trim(),
@@ -69,6 +97,7 @@ export default async function handler(
         price: parseFloat(payload.price),
         description: payload.description.trim(),
         imageUrl: payload.imageUrl?.trim() || null,
+        imageUrls: payload.imageUrls && Array.isArray(payload.imageUrls) ? payload.imageUrls : null,
         inStock: payload.inStock !== false,
         category: payload.categoryId ? { id: payload.categoryId } : null,
       });
@@ -83,7 +112,22 @@ export default async function handler(
         slug: saved.slug,
         price: saved.price,
         description: saved.description,
-        imageUrl: saved.imageUrl,
+        imageUrl: saved.imageUrl ? (() => {
+          try {
+            return getS3PublicUrl(saved.imageUrl);
+          } catch (error) {
+            console.error('[admin.products] Error processing imageUrl:', saved.imageUrl, error);
+            return saved.imageUrl; // fallback to original URL
+          }
+        })() : null,
+        imageUrls: (saved.imageUrls ?? []).map(url => {
+          try {
+            return getS3PublicUrl(url);
+          } catch (error) {
+            console.error('[admin.products] Error processing image URL:', url, error);
+            return url; // fallback to original URL
+          }
+        }),
         inStock: saved.inStock,
         category: saved.category,
         createdAt: saved.createdAt.toISOString(),
@@ -123,6 +167,28 @@ export default async function handler(
         return res.status(400).json({ error: "Valid price is required" });
       }
 
+      let processedImageUrls: string[] | null = null;
+
+      if (payload.imageUrls != null) {
+        if (!Array.isArray(payload.imageUrls)) {
+          console.log("[admin.products] PUT validation failed - imageUrls must be an array");
+          return res.status(400).json({ error: "imageUrls must be an array" });
+        }
+
+        if (payload.imageUrls.length > 5) {
+          console.log("[admin.products] PUT validation failed - too many images");
+          return res.status(400).json({ error: "Maximum 5 images allowed" });
+        }
+
+        const invalid = payload.imageUrls.some((url: unknown) => typeof url !== "string" || url.trim().length === 0);
+        if (invalid) {
+          console.log("[admin.products] PUT validation failed - invalid image URL value");
+          return res.status(400).json({ error: "All image URLs must be non-empty strings" });
+        }
+
+        processedImageUrls = payload.imageUrls.map((url: string) => url.trim());
+      }
+
       console.log("[admin.products] Updating product...");
       repo.merge(existing, {
         title: payload.title.trim(),
@@ -130,6 +196,7 @@ export default async function handler(
         price: parseFloat(payload.price),
         description: payload.description.trim(),
         imageUrl: payload.imageUrl?.trim() || null,
+        imageUrls: processedImageUrls,
         inStock: payload.inStock !== false,
         category: payload.categoryId ? { id: payload.categoryId } : null,
       });
@@ -143,7 +210,22 @@ export default async function handler(
         slug: saved.slug,
         price: saved.price,
         description: saved.description,
-        imageUrl: saved.imageUrl,
+        imageUrl: saved.imageUrl ? (() => {
+          try {
+            return getS3PublicUrl(saved.imageUrl);
+          } catch (error) {
+            console.error('[admin.products] Error processing imageUrl:', saved.imageUrl, error);
+            return saved.imageUrl; // fallback to original URL
+          }
+        })() : null,
+        imageUrls: (saved.imageUrls ?? []).map(url => {
+          try {
+            return getS3PublicUrl(url);
+          } catch (error) {
+            console.error('[admin.products] Error processing image URL:', url, error);
+            return url;
+          }
+        }),
         inStock: saved.inStock,
         category: saved.category,
         createdAt: saved.createdAt.toISOString(),

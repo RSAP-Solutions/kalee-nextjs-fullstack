@@ -43,7 +43,7 @@ const BlogArticlePage: NextPageWithMeta<BlogPageProps> = ({ post }) => (
           ← Back to Blog
         </Link>
         <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-semibold uppercase tracking-wide text-white/80 lg:justify-start">
-          <span className="rounded-full bg-amber/20 px-3 py-1 text-amber">
+          <span className="rounded-full bg-amber/20 px-3 py-1 text-amber inline-flex w-fit">
             {post.category}
           </span>
           <span>{post.date}</span>

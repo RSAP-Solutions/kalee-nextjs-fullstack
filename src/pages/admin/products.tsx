@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { AdminTable, Column } from "@/components/admin/Table";
+import Image from "next/image";
 import type { NextPageWithMeta } from "@/pages/_app";
 
 type CategoryOption = {
@@ -16,6 +17,7 @@ type ProductResponse = {
   price: number;
   description: string;
   imageUrl?: string | null;
+  imageUrls?: string[] | null;
   inStock: boolean;
   category: { id: string; name: string; slug: string } | null;
 };
@@ -36,6 +38,7 @@ type ProductFormState = {
   categoryId: string;
   status: "Active" | "Draft";
   description: string;
+  imageUrls: string[];
 };
 
 const emptyForm: ProductFormState = {
@@ -45,6 +48,7 @@ const emptyForm: ProductFormState = {
   categoryId: "",
   status: "Draft",
   description: "",
+  imageUrls: [],
 };
 
 const ProductsAdmin: NextPageWithMeta = () => {
@@ -138,6 +142,7 @@ const ProductsAdmin: NextPageWithMeta = () => {
         categoryId: product.category?.id ?? "",
         status: product.inStock ? "Active" : "Draft",
         description: product.description ?? "",
+        imageUrls: product.imageUrls ?? [],
       });
       setIsModalOpen(true);
     },
@@ -148,6 +153,9 @@ const ProductsAdmin: NextPageWithMeta = () => {
     setIsModalOpen(false);
     setFormState(emptyForm);
     setEditingId(null);
+    setImageFiles([]);
+    setImagePreviews([]);
+    setError(null);
   }, []);
 
   const handleFormChange = useCallback(
@@ -160,11 +168,76 @@ const ProductsAdmin: NextPageWithMeta = () => {
     [],
   );
 
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length + validFiles.length > 5) {
+      setError('Maximum 5 images allowed');
+      return;
+    }
+
+    setImageFiles(prev => [...prev, ...validFiles]);
+
+    // Create previews
+    validFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImagePreviews(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }, [imageFiles.length]);
+
+  const removeImage = useCallback((index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const uploadImagesToS3 = useCallback(async (files: File[]): Promise<string[]> => {
+    const uploadPromises = files.map(async (file, index) => {
+      // Generate unique S3 key
+      const timestamp = Date.now();
+      const fileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const s3Key = `products/product-${timestamp}-${index}-${fileName}`;
+
+      // Upload file to server endpoint
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('key', s3Key);
+      formData.append('contentType', file.type);
+
+      const uploadResponse = await fetch('/api/admin/s3/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log('[admin.products] Server upload response status:', uploadResponse.status);
+      
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('[admin.products] Server upload error response:', errorText);
+        throw new Error(`Failed to upload via server (${uploadResponse.status}): ${errorText}`);
+      }
+
+      const { publicUrl } = await uploadResponse.json();
+      console.log('[admin.products] Server upload successful, public URL:', publicUrl);
+      return s3Key;
+    });
+
+    return Promise.all(uploadPromises);
+  }, []);
+
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       setIsSaving(true);
       setError(null);
+      setIsUploading(true);
 
       const derivedTitle = formState.title.trim() || "Untitled Product";
       const priceValue = Number(formState.price);
@@ -179,10 +252,29 @@ const ProductsAdmin: NextPageWithMeta = () => {
       if (!Number.isFinite(priceValue) || priceValue < 0) {
         setError("Price must be a positive number");
         setIsSaving(false);
+        setIsUploading(false);
         return;
       }
 
       const description = formState.description.trim();
+      
+      // Upload images to S3 first
+      let uploadedImageUrls: string[] = [];
+      if (imageFiles.length > 0) {
+        try {
+          uploadedImageUrls = await uploadImagesToS3(imageFiles);
+        } catch (uploadError) {
+          console.error("[admin.products] Image upload failed:", uploadError);
+          setError("Failed to upload images. Please try again.");
+          setIsSaving(false);
+          setIsUploading(false);
+          return;
+        }
+      }
+
+      // Combine existing imageUrls with newly uploaded ones
+      const allImageUrls = [...(formState.imageUrls || []), ...uploadedImageUrls];
+
       const payload = {
         title: derivedTitle,
         slug,
@@ -190,6 +282,7 @@ const ProductsAdmin: NextPageWithMeta = () => {
         description: description || "",
         inStock: formState.status === "Active",
         imageUrl: null,
+        imageUrls: allImageUrls.length > 0 ? allImageUrls : null,
         categoryId: formState.categoryId,
       };
 
@@ -235,9 +328,10 @@ const ProductsAdmin: NextPageWithMeta = () => {
         setError(message);
       } finally {
         setIsSaving(false);
+        setIsUploading(false);
       }
     },
-    [modalMode, editingId, formState, fetchData, closeModal]
+    [modalMode, editingId, formState, imageFiles, uploadImagesToS3, fetchData, closeModal]
   );
 
   const handleDelete = useCallback(async () => {
@@ -342,9 +436,9 @@ const ProductsAdmin: NextPageWithMeta = () => {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/60 px-4 py-8">
-          <div className="w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 px-4 py-8">
+          <div className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-amber">
                   {modalMode === "create" ? "Add Product" : "Edit Product"}
@@ -362,7 +456,8 @@ const ProductsAdmin: NextPageWithMeta = () => {
               </button>
             </div>
 
-            <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
+            <div className="flex-1 overflow-y-auto p-6">
+              <form id="product-form" className="grid gap-5" onSubmit={handleSubmit}>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="grid gap-2 text-sm font-semibold text-slate-600">
                   Product Title
@@ -442,21 +537,123 @@ const ProductsAdmin: NextPageWithMeta = () => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <button type="submit" className="btn-primary" disabled={isSaving}>
-                  {isSaving ? "Saving…" : modalMode === "create" ? "Save Product" : "Update Product"}
-                </button>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Changes save to the database
-                </p>
+              <div className="grid gap-4">
+                <label className="grid gap-2 text-sm font-semibold text-slate-600">
+                  Product Images (Max 5)
+                  <div className="space-y-4">
+                    {/* File Upload Input */}
+                    <div className="relative">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        disabled={isUploading || imageFiles.length >= 5}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                      />
+                      <div className="w-full rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center hover:bg-slate-100 transition-colors">
+                        <div className="text-slate-600">
+                          <svg className="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          <p className="mt-2 text-sm font-medium">
+                            {isUploading ? "Uploading..." : "Click to upload images"}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            PNG, JPG, GIF up to 10MB each (max 5 images)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Image Previews */}
+                    {imagePreviews.length > 0 && (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {imagePreviews.map((preview, index) => (
+                          <div key={index} className="relative group">
+                            <Image
+                              src={preview}
+                              alt={`Preview ${index + 1}`}
+                              width={200}
+                              height={128}
+                              className="w-full h-32 object-cover rounded-lg border border-slate-200"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                            <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                              {imageFiles[index].name}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Existing S3 URLs (for editing) */}
+                    {formState.imageUrls && formState.imageUrls.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-slate-600">Existing images in S3:</p>
+                        {formState.imageUrls.map((url, index) => (
+                          <div key={`existing-${index}`} className="flex items-center gap-2 p-2 bg-slate-50 rounded">
+                            <div className="relative w-12 h-12">
+                              <Image
+                                src={url}
+                                alt={`Existing ${index + 1}`}
+                                width={48}
+                                height={48}
+                                className="w-12 h-12 object-cover rounded"
+                                unoptimized
+                                onError={(e) => {
+                                  console.error('[admin.products] Image failed to load:', url);
+                                  // Fallback to placeholder
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = '<div class="w-12 h-12 bg-slate-200 rounded flex items-center justify-center text-xs text-slate-500">Error</div>';
+                                  }
+                                }}
+                                onLoad={() => {
+                                  console.log('[admin.products] Image loaded successfully:', url);
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs text-slate-600 truncate flex-1">{url}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </label>
               </div>
             </form>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 p-6 border-t border-slate-200 bg-slate-50">
+              <button 
+                type="submit" 
+                form="product-form"
+                className="btn-primary" 
+                disabled={isSaving || isUploading}
+              >
+                {isUploading ? "Uploading Images..." : isSaving ? "Saving…" : modalMode === "create" ? "Save Product" : "Update Product"}
+              </button>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Changes save to the database
+              </p>
+            </div>
           </div>
         </div>
       )}
 
       {deleteTarget && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4 py-8">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 px-4 py-8">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl">
             <h3 className="text-lg font-semibold text-navy">Delete product?</h3>
             <p className="mt-2 text-sm text-slate-600">

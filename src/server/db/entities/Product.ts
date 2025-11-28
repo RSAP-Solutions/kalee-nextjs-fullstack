@@ -31,6 +31,9 @@ export class Product {
   @Column({ name: "image_url", type: "varchar", length: 255, nullable: true })
   imageUrl?: string | null;
 
+  @Column({ name: "image_urls", type: "jsonb", nullable: true })
+  imageUrls?: string[] | null;
+
   @Column({ name: "in_stock", type: "boolean", default: true })
   inStock!: boolean;
 

@@ -15,9 +15,15 @@ import { Order } from "./entities/Order";
 import { OrderItem } from "./entities/OrderItem";
 import { SiteProfile } from "./entities/SiteProfile";
 import { GalleryItem } from "./entities/GalleryItem";
+import { BlogItem } from "./entities/BlogItem";
+import { QuoteRequest } from "./entities/QuoteRequest";
 import { InitialSchema1721970000000 } from "./migrations/1721970000000-InitialSchema";
 import { AddSiteProfile1722025000000 } from "./migrations/1722025000000-AddSiteProfile";
 import { CreateGalleryItems1722026000000 } from "./migrations/1722026000000-CreateGalleryItems";
+import { CreateBlogItems1722027000000 } from "./migrations/1722027000000-CreateBlogItems";
+import { AddProductImageUrlsColumn1732741200001 } from "./migrations/1732741200001-AddProductImageUrlsColumn";
+import { AddCategoryImageUrl1732815000000 } from "./migrations/1732815000000-AddCategoryImageUrl";
+import { CreateQuoteRequests1732822000000 } from "./migrations/1732822000000-CreateQuoteRequests";
 
 const parseNumber = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);
@@ -42,8 +48,16 @@ const getDataSourceOptions = (): DataSourceOptions => {
     username: process.env.DATABASE_USER!,
     password: process.env.DATABASE_PASSWORD!,
     database: process.env.DATABASE_NAME!,
-    entities: [Category, Product, Order, OrderItem, SiteProfile, GalleryItem],
-    migrations: [InitialSchema1721970000000, AddSiteProfile1722025000000, CreateGalleryItems1722026000000],
+    entities: [Category, Product, Order, OrderItem, SiteProfile, GalleryItem, BlogItem, QuoteRequest],
+    migrations: [
+      InitialSchema1721970000000,
+      AddSiteProfile1722025000000,
+      CreateGalleryItems1722026000000,
+      CreateBlogItems1722027000000,
+      AddProductImageUrlsColumn1732741200001,
+      AddCategoryImageUrl1732815000000,
+      CreateQuoteRequests1732822000000,
+    ],
     migrationsTableName: "typeorm_migrations",
     synchronize: false,
     logging: process.env.NODE_ENV !== "production",

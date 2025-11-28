@@ -12,19 +12,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const { fileName, contentType } = req.body ?? {};
+  const { key, contentType, fileName } = req.body ?? {};
 
-  if (!fileName || typeof fileName !== "string" || !contentType || typeof contentType !== "string") {
-    res.status(400).json({ error: "fileName and contentType are required" });
+  // Accept either a custom key or generate one from fileName
+  let s3Key: string;
+  if (key && typeof key === "string") {
+    s3Key = key;
+  } else if (fileName && typeof fileName === "string") {
+    const safeName = fileName.replace(/[^a-zA-Z0-9_.-]/g, "-");
+    s3Key = `gallery/${Date.now()}-${safeName}`;
+  } else {
+    res.status(400).json({ error: "key or fileName is required" });
+    return;
+  }
+
+  if (!contentType || typeof contentType !== "string") {
+    res.status(400).json({ error: "contentType is required" });
     return;
   }
 
   try {
-    const safeName = fileName.replace(/[^a-zA-Z0-9_.-]/g, "-");
-    const key = `gallery/${Date.now()}-${safeName}`;
-
     const result = await createPresignedPutUrl({
-      key,
+      key: s3Key,
       contentType,
     });
 

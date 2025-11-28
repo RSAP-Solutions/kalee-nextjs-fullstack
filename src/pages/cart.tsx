@@ -155,7 +155,7 @@ const Cart: NextPageWithMeta = () => {
                   <p className="text-xs font-semibold uppercase tracking-wide text-amber">Step 1</p>
                   <h2 className="text-xl font-semibold text-navy">Shipping Information</h2>
                 </div>
-                <span className="rounded-full bg-amber/10 px-3 py-1 text-xs font-semibold text-amber">
+                <span className="rounded-full bg-amber/10 px-3 py-1 text-xs font-semibold text-amber inline-flex w-fit">
                   Mock until Stripe hookup
                 </span>
               </div>

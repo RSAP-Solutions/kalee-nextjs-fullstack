@@ -7,54 +7,84 @@ import type { BlogItemResponse } from "@/types/blog";
 const placeholderImage =
   "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nNDAwJyBoZWlnaHQ9JzI1MCcgZmlsbD0nI0VCREVGNycgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJz48cmVjdCB3aWR0aD0nNDAwJyBoZWlnaHQ9JzI1MCcgcng9JzE2Jy8+PHRleHQgeD0nMjAwJyB5PScxMjUnIGZvbnQtc2l6ZT0nNDAnIGZpbGw9JyM4MDg4OTAnIHRleHQtYW5jaG9yPSdtaWRkbGUnPkJsb2c8L3RleHQ+PC9zdmc+";
 
+const resolveProxyUrl = (value: string | null | undefined): string | null => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith("/api/images/")) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    try {
+      const url = new URL(trimmed);
+      if (url.hostname.includes("amazonaws.com") || url.hostname.includes("s3.")) {
+        const key = url.pathname.replace(/^\/+/, "");
+        return `/api/images/${key}`;
+      }
+      return trimmed;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  const key = trimmed.replace(/^\/+/, "");
+  return `/api/images/${key}`;
+};
+
 type BlogCardProps = {
   post: BlogItemResponse;
 };
 
-const BlogCard = ({ post }: BlogCardProps) => (
-  <article className="break-inside-avoid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card transition-transform duration-200 hover:-translate-y-1 hover:shadow-xl">
-    <Link href={`/blog/${post.id}`}>
-      <div className="block cursor-pointer">
-        <div className="relative h-48 w-full bg-slate-100">
-          <Image
-            src={post.coverImage ?? placeholderImage}
-            alt={post.title}
-            fill
-            className="object-cover"
-            sizes="(min-width: 1024px) 400px, 100vw"
-            unoptimized
-          />
-        </div>
-        <div className="space-y-3 px-6 py-5">
-          <div className="flex items-center gap-3 text-sm text-slate-500">
-            {post.author && <span>By {post.author}</span>}
-            <span>•</span>
-            <span>{new Date(post.publishedAt || post.createdAt).toLocaleDateString()}</span>
+const BlogCard = ({ post }: BlogCardProps) => {
+  const coverSrc = resolveProxyUrl(post.coverImagePreview ?? post.coverImage) ?? placeholderImage;
+
+  return (
+    <article className="break-inside-avoid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card transition-transform duration-200 hover:-translate-y-1 hover:shadow-xl">
+      <Link href={`/blog/${post.id}`}>
+        <div className="block cursor-pointer">
+          <div className="relative h-48 w-full bg-slate-100">
+            <Image
+              src={coverSrc}
+              alt={post.title}
+              fill
+              className="object-cover"
+              sizes="(min-width: 1024px) 400px, 100vw"
+              unoptimized
+            />
           </div>
-          <h3 className="text-lg font-semibold text-navy line-clamp-2">{post.title}</h3>
-          {post.excerpt && (
-            <p className="text-sm text-slate-600 line-clamp-3">{post.excerpt}</p>
-          )}
-          {Array.isArray(post.tags) && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {post.tags.slice(0, 3).map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ocean"
-                >
-                  {tag}
-                </span>
-              ))}
-              {post.tags.length > 3 && (
-                <span className="text-xs text-slate-500">+{post.tags.length - 3} more</span>
-              )}
+          <div className="space-y-3 px-6 py-5">
+            <div className="flex items-center gap-3 text-sm text-slate-500">
+              {post.author && <span>By {post.author}</span>}
+              <span>•</span>
+              <span>{new Date(post.publishedAt || post.createdAt).toLocaleDateString()}</span>
             </div>
-          )}
+            <h3 className="text-lg font-semibold text-navy line-clamp-2">{post.title}</h3>
+            {post.excerpt && (
+              <p className="text-sm text-slate-600 line-clamp-3">{post.excerpt}</p>
+            )}
+            {Array.isArray(post.tags) && post.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {post.tags.slice(0, 3).map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ocean"
+                  >
+                    {tag}
+                  </span>
+                ))}
+                {post.tags.length > 3 && (
+                  <span className="text-xs text-slate-500">+{post.tags.length - 3} more</span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </Link>
-  </article>
-);
+      </Link>
+    </article>
+  );
+};
 
 const BlogListingPage: NextPageWithMeta = () => {
   const [posts, setPosts] = useState<BlogItemResponse[]>([]);

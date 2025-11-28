@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { NextPageWithMeta } from "./_app";
+import type { QuoteRequestPayload } from "@/types/quote";
 
 const benefitList = [
   "100% Free Consultation – No hidden fees or obligations",
@@ -78,7 +80,68 @@ const processSteps = [
   },
 ];
 
-const CodePage: NextPageWithMeta = () => (
+const CodePage: NextPageWithMeta = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setSuccessMessage(null);
+    setErrorMessage(null);
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    const photos = formData
+      .getAll("photos")
+      .filter((file): file is File => file instanceof File)
+      .filter((file) => file.name && file.size > 0)
+      .map((file) => ({ name: file.name, size: file.size, type: file.type }));
+
+    const payload: QuoteRequestPayload = {
+      source: "quote_form",
+      firstName: (formData.get("firstName") as string | null)?.trim() || null,
+      lastName: (formData.get("lastName") as string | null)?.trim() || null,
+      email: (formData.get("email") as string | null)?.trim() || null,
+      phone: (formData.get("phone") as string | null)?.trim() || null,
+      addressLine: (formData.get("address") as string | null)?.trim() || null,
+      city: (formData.get("city") as string | null)?.trim() || null,
+      projectType: (formData.get("projectType") as string | null)?.trim() || null,
+      service: (formData.get("projectType") as string | null)?.trim() || null,
+      timeline: (formData.get("timeline") as string | null)?.trim() || null,
+      budget: (formData.get("budget") as string | null)?.trim() || null,
+      referral: (formData.get("referral") as string | null)?.trim() || null,
+      details: (formData.get("details") as string | null)?.trim() || null,
+      meta: photos.length > 0 ? { attachments: photos } : null,
+    };
+
+    try {
+      const response = await fetch("/api/quotes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error ?? `Submission failed (${response.status})`);
+      }
+
+      setSuccessMessage("Thank you! Your quote request has been received. We'll contact you within 24 hours.");
+      form.reset();
+    } catch (error) {
+      console.error("[quote.form.submit]", error);
+      setErrorMessage(error instanceof Error ? error.message : "We couldn't send your request. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
   <div className="space-y-16 py-12 sm:py-16">
     <section className="relative -mx-4 overflow-hidden rounded-3xl bg-gradient-to-r from-tangerine via-amber to-tangerine px-4 py-20 text-white sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
       <div className="mx-auto flex w-full max-w-content flex-col items-center gap-6 text-center">
@@ -132,12 +195,7 @@ const CodePage: NextPageWithMeta = () => (
               Get a detailed estimate within 24-48 hours
             </p>
 
-            <form
-              action="https://formspree.io/f/YOUR_FORM_ID"
-              method="POST"
-              encType="multipart/form-data"
-              className="mt-6 space-y-5"
-            >
+            <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
               <div className="grid gap-5 md:grid-cols-2">
                 <div className="space-y-2">
                   <label htmlFor="firstName" className="text-sm font-semibold text-navy">
@@ -319,12 +377,20 @@ const CodePage: NextPageWithMeta = () => (
                 </select>
               </div>
 
-              <input type="hidden" name="_subject" value="New Quote Request from Kealee Website" />
-              <input type="hidden" name="_next" value="https://www.kealeeservices.com/thank-you.html" />
-              <input type="hidden" name="_template" value="table" />
+              {errorMessage && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {errorMessage}
+                </div>
+              )}
 
-              <button type="submit" className="btn-primary w-full justify-center">
-                Get My Free Quote
+              {successMessage && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  {successMessage}
+                </div>
+              )}
+
+              <button type="submit" className="btn-primary w-full justify-center" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting…" : "Get My Free Quote"}
               </button>
 
               <div className="rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-sm text-slate-700">
@@ -374,7 +440,8 @@ const CodePage: NextPageWithMeta = () => (
       </div>
     </section>
   </div>
-);
+  );
+};
 
 CodePage.meta = {
   title: "Free Quote & Consultation | Kealee Construction | Maryland",

@@ -47,7 +47,7 @@ const BlogPage: NextPageWithMeta = () => (
               </div>
               <div className="flex flex-1 flex-col space-y-4 px-6 py-6">
                 <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  <span className="rounded-full bg-amber/20 px-3 py-1 text-amber">
+                  <span className="rounded-full bg-amber/20 px-3 py-1 text-amber inline-flex w-fit">
                     {post.category}
                   </span>
                   <span>{post.date}</span>

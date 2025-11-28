@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { useState } from "react";
 import type { NextPageWithMeta } from "./_app";
+import type { QuoteRequestPayload } from "@/types/quote";
 
 const contactCards = [
   {
@@ -71,8 +73,62 @@ const serviceAreas = [
   "📍 Baltimore, MD",
 ];
 
-const ContactPage: NextPageWithMeta = () => (
-  <div className="space-y-16 py-12 sm:py-16">
+const ContactPage: NextPageWithMeta = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setSuccessMessage(null);
+    setErrorMessage(null);
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+
+    const payload: QuoteRequestPayload = {
+      source: "contact_form",
+      fullName: (formData.get("name") as string | null)?.trim() || null,
+      phone: (formData.get("phone") as string | null)?.trim() || null,
+      email: (formData.get("email") as string | null)?.trim() || null,
+      addressLine: (formData.get("address") as string | null)?.trim() || null,
+      service: (formData.get("service") as string | null)?.trim() || null,
+      timeline: (formData.get("timeline") as string | null)?.trim() || null,
+      budget: (formData.get("budget") as string | null)?.trim() || null,
+      contactPreference: (formData.get("contact-preference") as string | null)?.trim() || null,
+      details: (formData.get("message") as string | null)?.trim() || null,
+      meta: {
+        projectLocation: (formData.get("location") as string | null)?.trim() || null,
+      },
+    };
+
+    try {
+      const response = await fetch("/api/quotes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error ?? `Submission failed (${response.status})`);
+      }
+
+      setSuccessMessage("Thank you! Your quote request has been received. We'll reach out within 24 hours.");
+      form.reset();
+    } catch (error) {
+      console.error("[contact.quote.submit]", error);
+      setErrorMessage(error instanceof Error ? error.message : "We couldn't send your request. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-16 py-12 sm:py-16">
     <section className="relative -mx-4 overflow-hidden rounded-3xl bg-gradient-to-r from-ocean via-navy to-slate-850 px-4 py-20 text-white sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
       <div className="mx-auto flex w-full max-w-content flex-col items-center gap-6 text-center">
         <h1 className="text-3xl font-bold leading-tight sm:text-5xl">
@@ -125,11 +181,7 @@ const ContactPage: NextPageWithMeta = () => (
           </p>
         </div>
 
-        <form
-          action="https://formspree.io/f/YOUR_FORM_ID"
-          method="POST"
-          className="space-y-6 rounded-3xl bg-white p-8 shadow-card"
-        >
+        <form className="space-y-6 rounded-3xl bg-white p-8 shadow-card" onSubmit={handleSubmit}>
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-semibold text-navy">
@@ -297,12 +349,20 @@ const ContactPage: NextPageWithMeta = () => (
             </select>
           </div>
 
-          <input type="hidden" name="_subject" value="New Quote Request from Kealee Website" />
-          <input type="hidden" name="_next" value="https://www.kealeeservices.com/thank-you.html" />
-          <input type="hidden" name="_template" value="table" />
+          {errorMessage && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              {errorMessage}
+            </div>
+          )}
 
-          <button type="submit" className="btn-primary w-full justify-center">
-            Submit Quote Request
+          {successMessage && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {successMessage}
+            </div>
+          )}
+
+          <button type="submit" className="btn-primary w-full justify-center" disabled={isSubmitting}>
+            {isSubmitting ? "Submitting…" : "Submit Quote Request"}
           </button>
 
           <p className="text-center text-sm text-slate-600">
@@ -403,7 +463,8 @@ const ContactPage: NextPageWithMeta = () => (
       </div>
     </section>
   </div>
-);
+  );
+};
 
 ContactPage.meta = {
   title: "Contact Kealee Construction | Free Quote | (443) 852-9890",

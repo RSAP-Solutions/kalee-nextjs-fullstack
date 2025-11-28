@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getProductRepository, getCategoryRepository } from "@/server/db/client";
+import { getS3PublicUrl } from "@/server/services/s3";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "GET") {
@@ -11,24 +12,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       res.status(200).json(
-        products.map((product) => ({
-          id: product.id,
-          title: product.title,
-          slug: product.slug,
-          price: product.price,
-          description: product.description,
-          imageUrl: product.imageUrl,
-          inStock: product.inStock,
-          category: product.category
-            ? {
-                id: product.category.id,
-                name: product.category.name,
-                slug: product.category.slug,
+        products.map((product) => {
+          const processedProduct = {
+            id: product.id,
+            title: product.title,
+            slug: product.slug,
+            price: product.price,
+            description: product.description,
+            imageUrl: (() => {
+              try {
+                return product.imageUrl ? getS3PublicUrl(product.imageUrl) : null;
+              } catch (error) {
+                console.error('[products.api] Error processing imageUrl:', product.imageUrl, error);
+                return product.imageUrl; // fallback to original URL
               }
-            : null,
-          createdAt: product.createdAt,
-          updatedAt: product.updatedAt,
-        }))
+            })(),
+            imageUrls: (product.imageUrls ?? []).map(url => {
+              try {
+                return getS3PublicUrl(url);
+              } catch (error) {
+                console.error('[products.api] Error processing image URL:', url, error);
+                return url; // fallback to original URL
+              }
+            }).filter((url): url is string => url !== null),
+            inStock: product.inStock,
+            category: product.category
+              ? {
+                  id: product.category.id,
+                  name: product.category.name,
+                  slug: product.category.slug,
+                }
+              : null,
+            createdAt: product.createdAt,
+            updatedAt: product.updatedAt,
+          };
+          
+          // Log the first product to see what URLs are being generated
+          if (products.indexOf(product) === 0) {
+            console.log('[products.api] Sample product URLs:', {
+              originalImageUrls: product.imageUrls,
+              processedImageUrls: processedProduct.imageUrls,
+              originalImageUrl: product.imageUrl,
+              processedImageUrl: processedProduct.imageUrl,
+            });
+          }
+          
+          return processedProduct;
+        })
       );
     } catch (error: unknown) {
       console.error("[products.get]", error);
@@ -49,11 +79,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "POST") {
     try {
-      const { title, slug, price, description, imageUrl, inStock = true, categoryId } = req.body ?? {};
+      const { title, slug, price, description, imageUrl, imageUrls, inStock = true, categoryId } = req.body ?? {};
 
       if (!title || !slug || typeof price !== "number" || !description) {
         res.status(400).json({ error: "title, slug, price, and description are required" });
         return;
+      }
+
+      // Validate imageUrls array (max 5 images)
+      if (imageUrls && Array.isArray(imageUrls)) {
+        if (imageUrls.length > 5) {
+          res.status(400).json({ error: "Maximum 5 images allowed" });
+          return;
+        }
+        if (!imageUrls.every(url => typeof url === "string")) {
+          res.status(400).json({ error: "All image URLs must be strings" });
+          return;
+        }
       }
 
       const repo = await getProductRepository();
@@ -65,6 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         price,
         description,
         imageUrl,
+        imageUrls: imageUrls || null,
         inStock,
       });
 
@@ -90,11 +133,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "PUT") {
     try {
-      const { id, title, slug, price, description, imageUrl, inStock, categoryId } = req.body ?? {};
+      const { id, title, slug, price, description, imageUrl, imageUrls, inStock, categoryId } = req.body ?? {};
 
       if (!id) {
         res.status(400).json({ error: "id is required" });
         return;
+      }
+
+      // Validate imageUrls array (max 5 images)
+      if (imageUrls && Array.isArray(imageUrls)) {
+        if (imageUrls.length > 5) {
+          res.status(400).json({ error: "Maximum 5 images allowed" });
+          return;
+        }
+        if (!imageUrls.every(url => typeof url === "string")) {
+          res.status(400).json({ error: "All image URLs must be strings" });
+          return;
+        }
       }
 
       const repo = await getProductRepository();
@@ -113,6 +168,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (typeof inStock === "boolean") product.inStock = inStock;
       if (description !== undefined) product.description = description;
       if (imageUrl !== undefined) product.imageUrl = imageUrl;
+      if (imageUrls !== undefined) product.imageUrls = imageUrls;
 
       if (categoryId !== undefined) {
         if (categoryId) {

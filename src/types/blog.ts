@@ -9,6 +9,7 @@ export interface BlogItemResponse {
   content: string;
   excerpt: string | null;
   coverImage: string | null;
+  coverImagePreview?: string | null;
   author: string | null;
   status: BlogItemStatus;
   tags: string[];
@@ -21,7 +22,7 @@ export interface BlogItemPayload {
   title: string;
   content: string;
   excerpt?: string;
-  coverImage?: string;
+  coverImage?: string | null;
   author?: string;
   status: BlogItemStatus;
   tags: string[];

@@ -10,6 +10,7 @@ const adminLinks = [
   { label: "Blogs", href: "/admin/blogs" },
   { label: "Categories", href: "/admin/categories" },
   { label: "Products", href: "/admin/products" },
+  { label: "Quotes", href: "/admin/quotes" },
 ];
 
 type AdminLayoutProps = {

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAdminApi } from "@/server/auth/adminSession";
 import { getCategoryRepository, getProductRepository } from "@/server/db/client";
+import { getS3PublicUrl } from "@/server/services/s3";
 
 export default async function handler(
   req: NextApiRequest,
@@ -32,12 +33,26 @@ export default async function handler(
           const productCount = await productRepo.count({
             where: { category: { id: category.id } },
           });
+
+          const imageUrl = category.imageUrl?.trim() || null;
+          let imageUrlPreview: string | null = null;
+          if (imageUrl) {
+            try {
+              imageUrlPreview = getS3PublicUrl(imageUrl);
+            } catch (error) {
+              console.error("[admin.categories] Error processing imageUrl", imageUrl, error);
+              imageUrlPreview = imageUrl;
+            }
+          }
+
           return {
             id: category.id,
             name: category.name,
             slug: category.slug,
             description: category.description ?? null,
             productCount,
+            imageUrl,
+            imageUrlPreview,
           };
         })
       );
@@ -61,11 +76,22 @@ export default async function handler(
         name: payload.name.trim(),
         slug: payload.slug.trim(),
         description: payload.description?.trim() || null,
+        imageUrl: payload.imageUrl?.trim() || null,
       });
 
       console.log("[admin.categories] Saving category...");
       const saved = await repo.save(category);
       console.log("[admin.categories] Category saved successfully:", saved.id);
+
+      let imageUrlPreview: string | null = null;
+      if (saved.imageUrl) {
+        try {
+          imageUrlPreview = getS3PublicUrl(saved.imageUrl);
+        } catch (error) {
+          console.error("[admin.categories] Error processing created imageUrl", saved.imageUrl, error);
+          imageUrlPreview = saved.imageUrl;
+        }
+      }
 
       const response = {
         id: saved.id,
@@ -73,6 +99,8 @@ export default async function handler(
         slug: saved.slug,
         description: saved.description,
         productCount: 0,
+        imageUrl: saved.imageUrl ?? null,
+        imageUrlPreview,
       };
 
       return res.status(200).json(response);
@@ -105,6 +133,9 @@ export default async function handler(
         name: payload.name.trim(),
         slug: payload.slug.trim(),
         description: payload.description?.trim() || null,
+        imageUrl: payload.imageUrl === null
+          ? null
+          : payload.imageUrl?.trim() || existing.imageUrl || null,
       });
 
       const saved = await repo.save(existing);
@@ -115,12 +146,24 @@ export default async function handler(
         where: { category: { id: saved.id } },
       });
 
+      let imageUrlPreview: string | null = null;
+      if (saved.imageUrl) {
+        try {
+          imageUrlPreview = getS3PublicUrl(saved.imageUrl);
+        } catch (error) {
+          console.error("[admin.categories] Error processing updated imageUrl", saved.imageUrl, error);
+          imageUrlPreview = saved.imageUrl;
+        }
+      }
+
       const response = {
         id: saved.id,
         name: saved.name,
         slug: saved.slug,
         description: saved.description,
         productCount,
+        imageUrl: saved.imageUrl ?? null,
+        imageUrlPreview,
       };
 
       return res.status(200).json(response);

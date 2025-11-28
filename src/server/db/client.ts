@@ -6,10 +6,13 @@ import { OrderItem } from "./entities/OrderItem";
 import { SiteProfile } from "./entities/SiteProfile";
 import { GalleryItem } from "./entities/GalleryItem";
 import { BlogItem } from "./entities/BlogItem";
+import { QuoteRequest } from "./entities/QuoteRequest";
 import { InitialSchema1721970000000 } from "./migrations/1721970000000-InitialSchema";
 import { AddSiteProfile1722025000000 } from "./migrations/1722025000000-AddSiteProfile";
 import { CreateGalleryItems1722026000000 } from "./migrations/1722026000000-CreateGalleryItems";
 import { CreateBlogItems1722027000000 } from "./migrations/1722027000000-CreateBlogItems";
+import { AddProductImageUrlsColumn1732741200001 } from "./migrations/1732741200001-AddProductImageUrlsColumn";
+import { CreateQuoteRequests1732822000000 } from "./migrations/1732822000000-CreateQuoteRequests";
 
 let appDataSource: DataSource | null = null;
 
@@ -74,8 +77,8 @@ export const getDataSource = async () => {
       username: process.env.DATABASE_USER!,
       password: process.env.DATABASE_PASSWORD!,
       database: process.env.DATABASE_NAME!,
-      entities: [Category, Product, Order, OrderItem, SiteProfile, GalleryItem, BlogItem],
-      migrations: [InitialSchema1721970000000, AddSiteProfile1722025000000, CreateGalleryItems1722026000000, CreateBlogItems1722027000000],
+      entities: [Category, Product, Order, OrderItem, SiteProfile, GalleryItem, BlogItem, QuoteRequest],
+      migrations: [InitialSchema1721970000000, AddSiteProfile1722025000000, CreateGalleryItems1722026000000, CreateBlogItems1722027000000, AddProductImageUrlsColumn1732741200001, CreateQuoteRequests1732822000000],
       migrationsTableName: "typeorm_migrations",
       synchronize: false,
       logging: process.env.NODE_ENV !== "production",
@@ -151,4 +154,9 @@ export const getGalleryItemRepository = async () => {
 export const getBlogItemRepository = async () => {
   const dataSource = await getDataSource();
   return dataSource.getRepository(BlogItem);
+};
+
+export const getQuoteRequestRepository = async () => {
+  const dataSource = await getDataSource();
+  return dataSource.getRepository(QuoteRequest);
 };

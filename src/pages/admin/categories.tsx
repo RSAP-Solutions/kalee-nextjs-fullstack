@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { AdminTable, Column } from "@/components/admin/Table";
 import type { AdminSession } from "@/types/admin";
@@ -11,6 +12,8 @@ type CategoryResponse = {
   slug: string;
   description?: string | null;
   productCount: number;
+  imageUrl?: string | null;
+  imageUrlPreview?: string | null;
 };
 
 type ProductResponse = {
@@ -25,6 +28,8 @@ type AdminCategoryRow = {
   name: string;
   slug: string;
   productIds: string[];
+  imageUrl: string | null;
+  imageUrlPreview: string | null;
 };
 
 type FormState = {
@@ -32,6 +37,7 @@ type FormState = {
   slug: string;
   description: string;
   productIds: string[];
+  imageUrl: string | null;
 };
 
 const emptyForm: FormState = {
@@ -39,6 +45,7 @@ const emptyForm: FormState = {
   slug: "",
   description: "",
   productIds: [],
+  imageUrl: null,
 };
 
 type CategoriesAdminProps = {
@@ -52,11 +59,16 @@ const CategoriesAdmin: NextPageWithMeta<CategoriesAdminProps> = ({ session }) =>
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [formState, setFormState] = useState<FormState>(emptyForm);
+  const [formState, setFormState] = useState<FormState>(() => ({ ...emptyForm }));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminCategoryRow | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [existingImagePreview, setExistingImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [shouldRemoveImage, setShouldRemoveImage] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -110,6 +122,8 @@ const CategoriesAdmin: NextPageWithMeta<CategoriesAdminProps> = ({ session }) =>
         name: category.name,
         slug: category.slug,
         productIds,
+        imageUrl: category.imageUrl ?? null,
+        imageUrlPreview: category.imageUrlPreview ?? null,
       };
     });
   }, [categories, products]);
@@ -119,7 +133,12 @@ const CategoriesAdmin: NextPageWithMeta<CategoriesAdminProps> = ({ session }) =>
   const openCreateModal = useCallback(() => {
     setModalMode("create");
     setEditingId(null);
-    setFormState(emptyForm);
+    setFormState(() => ({ ...emptyForm }));
+    setImageFile(null);
+    setImagePreview(null);
+    setExistingImagePreview(null);
+    setShouldRemoveImage(false);
+    setIsUploading(false);
     setIsModalOpen(true);
   }, []);
 
@@ -133,7 +152,13 @@ const CategoriesAdmin: NextPageWithMeta<CategoriesAdminProps> = ({ session }) =>
         slug: category?.slug ?? "",
         description: category?.description ?? "",
         productIds: row.productIds,
+        imageUrl: category?.imageUrl ?? null,
       });
+      setImageFile(null);
+      setImagePreview(null);
+      setExistingImagePreview(category?.imageUrlPreview ?? null);
+      setShouldRemoveImage(false);
+      setIsUploading(false);
       setIsModalOpen(true);
     },
     [categories],
@@ -141,15 +166,88 @@ const CategoriesAdmin: NextPageWithMeta<CategoriesAdminProps> = ({ session }) =>
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
-    setFormState(emptyForm);
+    setFormState(() => ({ ...emptyForm }));
     setEditingId(null);
+    setImageFile(null);
+    setImagePreview(null);
+    setExistingImagePreview(null);
+    setShouldRemoveImage(false);
+    setIsUploading(false);
   }, []);
 
-  const handleFormChange = useCallback((field: keyof FormState, value: string | string[]) => {
-    setFormState((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  const handleFormChange = useCallback(
+    <K extends keyof FormState>(field: K, value: FormState[K]) => {
+      setFormState((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+    },
+    [],
+  );
+
+  const handleImageChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file.");
+      return;
+    }
+
+    setError(null);
+    setImageFile(file);
+    setShouldRemoveImage(false);
+    setExistingImagePreview(null);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleRemoveImage = useCallback(() => {
+    setImageFile(null);
+    setImagePreview(null);
+    setExistingImagePreview(null);
+    setFormState((prev) => ({ ...prev, imageUrl: null }));
+    setShouldRemoveImage(true);
+  }, []);
+
+  const uploadImageToS3 = useCallback(async (file: File): Promise<string> => {
+    const timestamp = Date.now();
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const s3Key = `categories/category-${timestamp}-${sanitizedFileName}`;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("key", s3Key);
+    formData.append("contentType", file.type);
+
+    try {
+      const uploadResponse = await fetch("/api/admin/s3/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error("[admin.categories] Image upload error response:", errorText);
+        throw new Error(errorText || `Upload failed with status ${uploadResponse.status}`);
+      }
+
+      const data: { key?: string } = await uploadResponse.json();
+      const uploadedKey = data?.key ?? s3Key;
+      console.log("[admin.categories] Image uploaded successfully with key:", uploadedKey);
+      return uploadedKey;
+    } catch (error) {
+      console.error("[admin.categories] Image upload failed:", error);
+      throw new Error("UPLOAD_CATEGORY_IMAGE");
+    }
   }, []);
 
   const syncProductAssignments = useCallback(
@@ -201,10 +299,32 @@ const CategoriesAdmin: NextPageWithMeta<CategoriesAdminProps> = ({ session }) =>
           .replace(/[^a-z0-9-]/g, "");
       const slug = baseSlug || `category-${Date.now()}`;
       const description = formState.description.trim();
+      let imageKey: string | null = formState.imageUrl?.trim() || null;
+
+      if (shouldRemoveImage) {
+        imageKey = null;
+      }
+
+      if (imageFile) {
+        try {
+          setIsUploading(true);
+          imageKey = await uploadImageToS3(imageFile);
+        } catch (uploadError) {
+          console.error("[admin.categories] Category image upload failed", uploadError);
+          setError("Failed to upload category image. Please try again.");
+          setIsSaving(false);
+          setIsUploading(false);
+          return;
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
       const payload = {
         name: derivedName,
         slug,
         description: description || null,
+        imageUrl: imageKey,
       };
 
       try {
@@ -257,9 +377,20 @@ const CategoriesAdmin: NextPageWithMeta<CategoriesAdminProps> = ({ session }) =>
         setError(message);
       } finally {
         setIsSaving(false);
+        setIsUploading(false);
       }
     },
-    [closeModal, editingId, fetchData, formState, modalMode, syncProductAssignments],
+    [
+      closeModal,
+      editingId,
+      fetchData,
+      formState,
+      modalMode,
+      imageFile,
+      shouldRemoveImage,
+      uploadImageToS3,
+      syncProductAssignments,
+    ],
   );
 
   const handleDelete = useCallback(async () => {
@@ -409,6 +540,67 @@ const CategoriesAdmin: NextPageWithMeta<CategoriesAdminProps> = ({ session }) =>
                   />
                 </label>
 
+                <div className="grid gap-2 text-sm font-semibold text-slate-600">
+                  <span>Category Image</span>
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        disabled={isUploading}
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                      />
+                      <div className="w-full rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition-colors hover:bg-slate-100">
+                        <div className="text-slate-600">
+                          <svg
+                            className="mx-auto h-12 w-12 text-slate-400"
+                            stroke="currentColor"
+                            fill="none"
+                            viewBox="0 0 48 48"
+                          >
+                            <path
+                              d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <p className="mt-2 text-sm font-medium">
+                            {isUploading ? "Uploading…" : "Click or drag to upload image"}
+                          </p>
+                          <p className="text-xs text-slate-500">PNG, JPG, or WEBP recommended</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {(imagePreview || existingImagePreview) && (
+                      <div className="relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                        <div className="relative aspect-video w-full">
+                          <Image
+                            src={imagePreview || existingImagePreview || ""}
+                            alt="Category image preview"
+                            fill
+                            className="object-cover"
+                            sizes="(min-width: 1024px) 400px, 100vw"
+                            unoptimized
+                          />
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-500">
+                          <span>{imageFile?.name ?? "Existing image"}</span>
+                          <button
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="text-xs font-semibold text-red-500 hover:text-red-600"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div>
                   <p className="text-sm font-semibold text-slate-600">Assign Products</p>
                   <p className="text-xs text-slate-500">
@@ -455,8 +647,14 @@ const CategoriesAdmin: NextPageWithMeta<CategoriesAdminProps> = ({ session }) =>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <button type="submit" className="btn-primary" disabled={isSaving}>
-                    {isSaving ? "Saving…" : modalMode === "create" ? "Save Category" : "Update Category"}
+                  <button type="submit" className="btn-primary" disabled={isSaving || isUploading}>
+                    {isSaving || isUploading
+                      ? isUploading
+                        ? "Uploading image…"
+                        : "Saving…"
+                      : modalMode === "create"
+                      ? "Save Category"
+                      : "Update Category"}
                   </button>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Changes save to the database
