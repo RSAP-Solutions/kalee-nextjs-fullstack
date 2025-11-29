@@ -77,7 +77,7 @@ const QuotesAdminPage: NextPageWithMeta = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [filterStatus]);
+  }, [filterStatus, notify]);
 
   useEffect(() => {
     void fetchQuotes();

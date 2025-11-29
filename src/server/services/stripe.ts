@@ -25,8 +25,10 @@ export const getStripeClient = (): Stripe | null => {
     return null;
   }
 
+  const apiVersion: Stripe.LatestApiVersion = "2024-06-20";
+
   stripeInstance = new Stripe(secretKey, {
-    apiVersion: "2024-10-28.acacia",
+    apiVersion,
     typescript: true,
   });
 
