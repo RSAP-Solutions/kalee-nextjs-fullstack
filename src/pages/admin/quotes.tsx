@@ -4,6 +4,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { AdminTable, type Column } from "@/components/admin/Table";
 import type { NextPageWithMeta } from "@/pages/_app";
 import type { QuoteRequestResponse, QuoteRequestStatus } from "@/types/quote";
+import { useNotifications } from "@/providers/NotificationProvider";
 
 const STATUS_OPTIONS: QuoteRequestStatus[] = ["new", "in_review", "scheduled", "closed"];
 
@@ -46,6 +47,7 @@ const QuotesAdminPage: NextPageWithMeta = () => {
   const [filterStatus, setFilterStatus] = useState<QuoteRequestStatus | "all">("all");
   const [selected, setSelected] = useState<QuoteRequestResponse | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const { notify } = useNotifications();
 
   const fetchQuotes = useCallback(async () => {
     setIsLoading(true);
@@ -67,6 +69,11 @@ const QuotesAdminPage: NextPageWithMeta = () => {
       console.error("[admin.quotes.fetch]", err);
       const message = err instanceof Error ? err.message : "Failed to load quote requests";
       setError(message);
+      notify({
+        title: "Could not load quotes",
+        message,
+        intent: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -104,10 +111,20 @@ const QuotesAdminPage: NextPageWithMeta = () => {
       const updated = (await response.json()) as QuoteRequestResponse;
       setItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       setSelected((prev) => (prev?.id === updated.id ? updated : prev));
+      notify({
+        title: "Status updated",
+        message: `Quote marked as ${STATUS_LABELS[updated.status]}.`,
+        intent: "success",
+      });
     } catch (err: unknown) {
       console.error("[admin.quotes.update]", err);
       const message = err instanceof Error ? err.message : "Failed to update status";
       setError(message);
+      notify({
+        title: "Update failed",
+        message,
+        intent: "error",
+      });
     } finally {
       setUpdatingId(null);
     }

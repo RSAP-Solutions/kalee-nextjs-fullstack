@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useNotifications } from "@/providers/NotificationProvider";
 import type { NextPageWithMeta } from "./_app";
 import type { QuoteRequestPayload } from "@/types/quote";
 
@@ -77,6 +78,7 @@ const ContactPage: NextPageWithMeta = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { notify } = useNotifications();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -118,10 +120,21 @@ const ContactPage: NextPageWithMeta = () => {
       }
 
       setSuccessMessage("Thank you! Your quote request has been received. We'll reach out within 24 hours.");
+      notify({
+        title: "Request received",
+        message: "We’ll contact you within 24 hours.",
+        intent: "success",
+      });
       form.reset();
     } catch (error) {
       console.error("[contact.quote.submit]", error);
-      setErrorMessage(error instanceof Error ? error.message : "We couldn't send your request. Please try again.");
+      const message = error instanceof Error ? error.message : "We couldn't send your request. Please try again.";
+      setErrorMessage(message);
+      notify({
+        title: "Submission failed",
+        message,
+        intent: "error",
+      });
     } finally {
       setIsSubmitting(false);
     }

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { useNotifications } from "@/providers/NotificationProvider";
 import type { NextPageWithMeta } from "./_app";
 import type { QuoteRequestPayload } from "@/types/quote";
 
@@ -80,10 +81,12 @@ const processSteps = [
   },
 ];
 
-const CodePage: NextPageWithMeta = () => {
+const QuotePage: NextPageWithMeta = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedPhotos, setSelectedPhotos] = useState<FileList | null>(null);
+  const { notify } = useNotifications();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -132,10 +135,22 @@ const CodePage: NextPageWithMeta = () => {
       }
 
       setSuccessMessage("Thank you! Your quote request has been received. We'll contact you within 24 hours.");
+      notify({
+        title: "Quote request sent",
+        message: "Our team will reach out within 24 hours.",
+        intent: "success",
+      });
       form.reset();
+      setSelectedPhotos(null);
     } catch (error) {
       console.error("[quote.form.submit]", error);
-      setErrorMessage(error instanceof Error ? error.message : "We couldn't send your request. Please try again.");
+      const message = error instanceof Error ? error.message : "We couldn't send your request. Please try again.";
+      setErrorMessage(message);
+      notify({
+        title: "Submission failed",
+        message,
+        intent: "error",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -443,10 +458,10 @@ const CodePage: NextPageWithMeta = () => {
   );
 };
 
-CodePage.meta = {
+QuotePage.meta = {
   title: "Free Quote & Consultation | Kealee Construction | Maryland",
   description:
     "Request a free construction quote from Kealee Construction. Detailed estimates for additions, renovations, ADA modifications, and more across DC, Maryland, and Virginia.",
 };
 
-export default CodePage;
+export default QuotePage;

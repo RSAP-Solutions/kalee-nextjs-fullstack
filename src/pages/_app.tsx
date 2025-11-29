@@ -4,6 +4,7 @@ import Layout from "@/components/Layout";
 import type { NextPage } from "next";
 import React from "react";
 import { SiteProfileProvider } from "@/providers/SiteProfileProvider";
+import { NotificationProvider } from "@/providers/NotificationProvider";
 
 type PageMeta = {
   title?: string;
@@ -27,9 +28,11 @@ export default function App({
 
   return (
     <SiteProfileProvider>
-      <Layout title={meta.title} description={meta.description}>
-        <Component {...pageProps} />
-      </Layout>
+      <NotificationProvider>
+        <Layout title={meta.title} description={meta.description}>
+          <Component {...pageProps} />
+        </Layout>
+      </NotificationProvider>
     </SiteProfileProvider>
   );
 }
